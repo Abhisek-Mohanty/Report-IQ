@@ -1,0 +1,27 @@
+fastapi
+uvicorn
+databases
+loguru
+pyjwt
+bcrypt
+passlib
+orjson
+aiomysql
+boto3
+requests
+pydantic[email]
+xmltodict
+dicttoxml
+qrcode
+image
+pdfkit
+requests_pkcs12
+pillow_heif
+python-multipart
+websockets
+fastapi_utilities
+docx2pdf
+pypiwin32
+
+SQLAlchemy==1.4.49
+# pip install -r requirements.txt
