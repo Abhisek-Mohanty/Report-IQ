@@ -1,5 +1,10 @@
 import functools
 import json
+from app.services import security
+
+def getSalt():
+    salt = security.generate_salt()
+    return salt
 
 def decrypt(salt, encoded):
     if not encoded:

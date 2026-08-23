@@ -4,6 +4,8 @@ import re
 import base64
 from app.resources.helper.moment import Moment
 from app.core.config import JWT_TOKEN_PREFIX, SERVER_DEFAULT_OFFSET
+from app.resources.constant import USER_CONTEXT_KEY
+from app.services import jwt
 
 from app.core import config
 # from app.api.response.http_response import SendErrorResponse
@@ -12,6 +14,19 @@ def isMobile(txt):
     oList =re.findall(r'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini', txt)
     return True if len(oList) > 1 else False
 
+async def genAuthToken(user, context, switchId = 0, project = 0, debug = False):
+
+    oContext = USER_CONTEXT_KEY.get(str(context).lower(),None) if context else None
+    if oContext:
+        oContext = oContext.value
+    else :
+        oContext = context
+    token = jwt.create_access_token_for_user(user =  user, secret_key = str(config.SECRET_KEY), context= oContext , switchId=switchId, debug=debug, project = project )
+
+    if (type(token) != str):
+        token = token.decode("utf-8")
+        
+    return JWT_TOKEN_PREFIX + " " + token 
             
 def getAttr(obj, attr, val = None ):
     if type(obj) is not dict:

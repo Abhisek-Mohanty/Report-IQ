@@ -845,12 +845,12 @@ body{
 .w-full{
   width: 100%;
 }
-.w-screen{
-  width: 100vw;
-}
 .w-max{
   width: -moz-max-content;
   width: max-content;
+}
+.w-screen{
+  width: 100vw;
 }
 .min-w-0{
   min-width: 0px;
@@ -864,11 +864,11 @@ body{
 .min-w-\[140px\]{
   min-width: 140px;
 }
-.min-w-full{
-  min-width: 100%;
-}
 .min-w-\[30px\]{
   min-width: 30px;
+}
+.min-w-full{
+  min-width: 100%;
 }
 .max-w-2xl{
   max-width: 42rem;
@@ -911,9 +911,6 @@ body{
 }
 .shrink-0{
   flex-shrink: 0;
-}
-.table-fixed{
-  table-layout: fixed;
 }
 .border-collapse{
   border-collapse: collapse;

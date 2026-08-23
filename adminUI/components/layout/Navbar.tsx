@@ -118,7 +118,7 @@ export function Navbar() {
         <div className="w-[1px] h-6 bg-border mx-1" />
 
         {/* User profile info */}
-        {/* <div className="flex items-center gap-2.5 pl-1.5">
+        <div className="flex items-center gap-2.5 pl-1.5">
           <div className="h-8 w-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-display font-bold text-xs text-primary shadow-inner">
             JD
           </div>
@@ -126,7 +126,7 @@ export function Navbar() {
             <div className="text-xs font-semibold leading-none text-foreground">John Doe</div>
             <span className="text-[10px] text-muted-foreground leading-none">Data Architect</span>
           </div>
-        </div> */}
+        </div>
       </div>
 
       {/* Notifications Modal */}

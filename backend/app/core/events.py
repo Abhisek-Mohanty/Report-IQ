@@ -10,7 +10,7 @@ def create_start_app_handler(app: FastAPI) -> Callable:  # type: ignore
     async def start_app() -> None:
         await connect_to_db(app)
 
-    return start_app 
+    return start_app
 
 def create_stop_app_handler(app: FastAPI) -> Callable:  # type: ignore
     @logger.catch

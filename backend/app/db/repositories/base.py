@@ -16,8 +16,8 @@ from sqlalchemy.sql import text
 
 from app.resources.helper.moment import Moment
 from app.resources.helper.common import * 
-# from app.models.domain.db import *
-# from app.resources.constant import USER_CONTEXT
+from app.models.domain.db import *
+from app.resources.constant import USER_CONTEXT
 from sqlalchemy.orm import Session, load_only, lazyload, joinedload, join, contains_eager
 from app.api.response.http_response import SendErrorResponse
 from fastapi.encoders import jsonable_encoder
@@ -145,13 +145,13 @@ class BaseRepository:
                         setattr(oModel, key , oData[key])
                     except:
                         pass
-        # if oModel:
-        #     oModel.updatedBy   = user.id if user and user.context == USER_CONTEXT.ADMIN.value else None
-        #     oModel.updatedAt   = now
-        #     if oModel.createdBy == None:
-        #         oModel.createdBy   = user.id  if user and user.context == USER_CONTEXT.ADMIN.value else None
-        #     if oModel.createdAt is None:
-        #         oModel.createdAt   = now
+        if oModel:
+            oModel.updatedBy   = user.id if user and user.context == USER_CONTEXT.ADMIN.value else None
+            oModel.updatedAt   = now
+            if oModel.createdBy == None:
+                oModel.createdBy   = user.id  if user and user.context == USER_CONTEXT.ADMIN.value else None
+            if oModel.createdAt is None:
+                oModel.createdAt   = now
             
         return oModel
     
