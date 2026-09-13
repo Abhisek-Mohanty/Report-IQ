@@ -6,8 +6,10 @@ import { Sun, Moon, Bell, Settings, Search, Database, LogOut } from "lucide-reac
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
+import SignIn from "./sign-in";
+import { auth } from "@/lib/auth";
 
-export function Navbar() {
+export async function Navbar() {
   const theme = useAnalyticsStore((state) => state.theme);
   const toggleTheme = useAnalyticsStore((state) => state.toggleTheme);
   const datasets = useAnalyticsStore((state) => state.datasets);
@@ -32,6 +34,8 @@ export function Navbar() {
     setIsSearchFocused(false);
     toast.success(`Switched to dataset: ${datasets.find((d) => d.id === id)?.name}`);
   };
+   const session = await auth()
+   console.log(session);
 
   return (
     <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shrink-0 z-20 relative">
@@ -124,7 +128,8 @@ export function Navbar() {
           </div>
           <div className="hidden sm:block text-left">
             <div className="text-xs font-semibold leading-none text-foreground">John Doe</div>
-            <span className="text-[10px] text-muted-foreground leading-none">Data Architect</span>
+            <SignIn/>
+            {/* <span className="text-[10px] text-muted-foreground leading-none">Data Architect</span> */}
           </div>
         </div>
       </div>
