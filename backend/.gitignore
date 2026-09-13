@@ -1,0 +1,8 @@
+.env
+.env.*
+.idea
+/database/localUpdate.sql
+.DS_Store
+.cpython-310.pyc
+.pyc
+/venv

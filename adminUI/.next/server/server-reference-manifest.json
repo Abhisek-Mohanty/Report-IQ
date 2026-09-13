@@ -1,0 +1,32 @@
+{
+  "node": {
+    "405bd1a39e0e8eb696358cc1d71e2e701f5b1de070": {
+      "workers": {
+        "app/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22D%3A%5C%5CReport-IQ%5C%5CadminUI%5C%5Cactions%5C%5Cauth.ts%22%2C%5B%7B%22id%22%3A%22000aa8d73e236d6e2171edc36f5f9818e4d7970ebc%22%2C%22exportedName%22%3A%22signInWithGoogle%22%2C%22filename%22%3A%22..%2FD%3A%5C%5CReport-IQ%5C%5CadminUI%5C%5Cactions%5C%5Cauth.ts%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/page": "action-browser"
+      },
+      "filename": "../D:\\Report-IQ\\adminUI\\app\\actions.ts",
+      "exportedName": "updateUserProfile"
+    },
+    "000aa8d73e236d6e2171edc36f5f9818e4d7970ebc": {
+      "workers": {
+        "app/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22D%3A%5C%5CReport-IQ%5C%5CadminUI%5C%5Cactions%5C%5Cauth.ts%22%2C%5B%7B%22id%22%3A%22000aa8d73e236d6e2171edc36f5f9818e4d7970ebc%22%2C%22exportedName%22%3A%22signInWithGoogle%22%2C%22filename%22%3A%22..%2FD%3A%5C%5CReport-IQ%5C%5CadminUI%5C%5Cactions%5C%5Cauth.ts%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/page": "action-browser"
+      },
+      "filename": "../D:\\Report-IQ\\adminUI\\actions\\auth.ts",
+      "exportedName": "signInWithGoogle"
+    }
+  },
+  "edge": {},
+  "encryptionKey": "F+/u/lS/mDXbyawyz79CCxv/UkijGOnl1tQ37HXLGyo="
+}
