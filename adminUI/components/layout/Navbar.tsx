@@ -35,7 +35,7 @@ export async function Navbar() {
     toast.success(`Switched to dataset: ${datasets.find((d) => d.id === id)?.name}`);
   };
    const session = await auth()
-   console.log(session);
+   console.log(session); 
 
   return (
     <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shrink-0 z-20 relative">
