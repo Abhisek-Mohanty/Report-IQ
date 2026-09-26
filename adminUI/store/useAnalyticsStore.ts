@@ -47,7 +47,7 @@ export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   theme: "dark", // default to dark theme for premium styling
   charts: [],
   queryGroup: initialQueryGroup(),
-
+ 
   setDatasets: (datasets) => set({ datasets }),
   
   addDataset: (dataset) => set((state) => {
