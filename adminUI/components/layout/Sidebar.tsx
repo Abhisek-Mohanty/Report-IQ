@@ -25,30 +25,32 @@ interface SidebarItem {
   name: string;
   icon: React.ComponentType<any>;
   category: "core" | "prep" | "ai";
+  requiresAuth?: boolean;
 }
 
 const SIDEBAR_ITEMS: SidebarItem[] = [
   // Core Analytics
-  { id: "dashboard", name: "Dashboard", icon: Activity, category: "core" },
-  { id: "upload", name: "Upload Files", icon: UploadCloud, category: "core" },
-  { id: "datasets", name: "Datasets", icon: Database, category: "core" },
+  { id: "dashboard", name: "Dashboard", icon: Activity, category: "core", requiresAuth: false },
+  { id: "upload", name: "Upload Files", icon: UploadCloud, category: "core", requiresAuth: false },
+  { id: "datasets", name: "Datasets", icon: Database, category: "core", requiresAuth: false },
   
   // Data Preparation
-  { id: "merge", name: "Merge Tool", icon: GitMerge, category: "prep" },
-  { id: "split", name: "Split Tool", icon: Scissors, category: "prep" },
-  { id: "cleaning", name: "Data Cleaning", icon: FileSpreadsheet, category: "prep" },
-  { id: "query", name: "Query Builder", icon: Filter, category: "prep" },
-  { id: "visualizations", name: "Visualizations", icon: BarChart3, category: "prep" },
-  { id: "export", name: "Export Report", icon: Download, category: "prep" },
+  { id: "merge", name: "Merge Tool", icon: GitMerge, category: "prep", requiresAuth: false },
+  { id: "split", name: "Split Tool", icon: Scissors, category: "prep", requiresAuth: false },
+  { id: "cleaning", name: "Data Cleaning", icon: FileSpreadsheet, category: "prep", requiresAuth: false },
+  { id: "query", name: "Query Builder", icon: Filter, category: "prep", requiresAuth: false },
+  { id: "visualizations", name: "Visualizations", icon: BarChart3, category: "prep", requiresAuth: false },
+  { id: "export", name: "Export Report", icon: Download, category: "prep", requiresAuth: false },
   
   // AI Insights placeholders
-  { id: "ai-insights", name: "AI Insights", icon: Brain, category: "ai" },
-  { id: "ai-chat", name: "AI Copilot Chat", icon: MessageSquareCode, category: "ai" },
-  { id: "ai-query", name: "AI Query Agent", icon: SearchCode, category: "ai" },
-  { id: "ai-report", name: "AI Report Builder", icon: FileHeart, category: "ai" },
+  { id: "ai-insights", name: "AI Insights", icon: Brain, category: "ai", requiresAuth: true },
+  { id: "ai-chat", name: "AI Copilot Chat", icon: MessageSquareCode, category: "ai", requiresAuth: true },
+  { id: "ai-query", name: "AI Query Agent", icon: SearchCode, category: "ai", requiresAuth: true },
+  { id: "ai-report", name: "AI Report Builder", icon: FileHeart, category: "ai", requiresAuth: true },
 ];
 
 export function Sidebar() {
+  const [showLoginModal, setShowLoginModal] = React.useState(false);
   const activeTab = useAnalyticsStore((state) => state.activeTab);
   const setActiveTab = useAnalyticsStore((state) => state.setActiveTab);
   const datasets = useAnalyticsStore((state) => state.datasets);
@@ -71,7 +73,19 @@ export function Sidebar() {
             return (
               <li key={item.id}>
                 <button
-                  onClick={() => !isDisabled && setActiveTab(item.id)}
+                 onClick={() => {
+                        if (isDisabled) return;
+
+                        if (item.requiresAuth) {
+                          const token = localStorage.getItem("access_token");
+
+                          if (!token) {
+                            setShowLoginModal(true);
+                            return;
+                          }
+                        }
+                        setActiveTab(item.id);
+                      }}
                   disabled={isDisabled}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 relative group",
@@ -131,6 +145,41 @@ export function Sidebar() {
             Active: <span className="font-semibold text-foreground">{datasets[datasets.length - 1].name}</span>
           </div>
         )}
+        {showLoginModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+              <div className="w-96 rounded-xl bg-card p-6 shadow-xl">
+
+                <h2 className="text-xl font-semibold">
+                  Login Required
+                </h2>
+
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Please login to use Report IQ AI features.
+                </p>
+
+                <div className="mt-6 flex justify-end gap-3">
+
+                  <button
+                    onClick={() => setShowLoginModal(false)}
+                    className="rounded-lg px-4 py-2 text-sm hover:bg-accent"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      window.location.href =
+                        "http://localhost:8000/api/v1/auth/google";
+                    }}
+                    className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"
+                  >
+                    Login with Google
+                  </button>
+
+                </div>
+              </div>
+            </div>
+          )}
       </div>
     </aside>
   );

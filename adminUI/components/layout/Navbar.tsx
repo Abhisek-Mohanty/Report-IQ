@@ -9,7 +9,21 @@ import { toast } from "@/components/ui/toast";
 import SignIn from "./sign-in";
 import { auth } from "@/lib/auth";
 
-export async function Navbar() {
+export function Navbar() {
+  const [name, setName] = React.useState("Guest User");
+  const [picture, setPicture] = React.useState("/assets/business.png");
+  React.useEffect(() => {
+  const profile_info = localStorage.getItem("profile_info");
+    if (profile_info) {
+    const profile = JSON.parse(profile_info);
+  if (profile?.name) {
+      setName(profile['name']);
+  }
+  if (profile?.picture) {
+      setPicture(profile['picture']);
+} }}, []);
+console.log(picture);
+
   const theme = useAnalyticsStore((state) => state.theme);
   const toggleTheme = useAnalyticsStore((state) => state.toggleTheme);
   const datasets = useAnalyticsStore((state) => state.datasets);
@@ -20,6 +34,8 @@ export async function Navbar() {
   const [isNotifyOpen, setIsNotifyOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
 
   const activeDataset = datasets.find((d) => d.id === selectedDatasetId);
 
@@ -34,8 +50,8 @@ export async function Navbar() {
     setIsSearchFocused(false);
     toast.success(`Switched to dataset: ${datasets.find((d) => d.id === id)?.name}`);
   };
-   const session = await auth()
-   console.log(session); 
+  //  const session = await auth()
+  //  console.log(session); 
 
   return (
     <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shrink-0 z-20 relative">
@@ -122,15 +138,19 @@ export async function Navbar() {
         <div className="w-[1px] h-6 bg-border mx-1" />
 
         {/* User profile info */}
-        <div className="flex items-center gap-2.5 pl-1.5">
-          <div className="h-8 w-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-display font-bold text-xs text-primary shadow-inner">
-            JD
+        <div className="flex items-center gap-2.5 pl-1.5 cursor-pointer" onClick={() => setIsProfileOpen(true)}>
+          <div className="h-9 w-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-display font-bold text-xs text-primary shadow-inner">
+            <img
+                  src={picture}
+                  alt={name || "User"}
+                  className="h-full w-full rounded-full object-cover"
+                />
           </div>
           <div className="hidden sm:block text-left">
-            <div className="text-xs font-semibold leading-none text-foreground">John Doe</div>
-            <SignIn/>
-            {/* <span className="text-[10px] text-muted-foreground leading-none">Data Architect</span> */}
-          </div>
+            <div className="text-xs font-semibold leading-none text-foreground">
+              {name}
+            </div>
+        </div>
         </div>
       </div>
 
@@ -154,6 +174,29 @@ export async function Navbar() {
         </div>
         <div className="mt-6 flex justify-end">
           <Button size="sm" onClick={() => setIsNotifyOpen(false)}>Close</Button>
+        </div>
+      </Dialog>
+
+      {/* Profile Modal */}
+      <Dialog isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} title="Profle Popup">
+        <div className="space-y-3 font-medium">
+          <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg text-xs text-primary flex gap-2">
+            <Database className="h-4 w-4 shrink-0" />
+            <div>
+              <div className="font-semibold mb-0.5">Welcome to Report IQ!</div>
+              <p className="opacity-90 leading-normal">Everything runs 100% in browser. Start by dropping an Excel or CSV file in the Upload tab.</p>
+            </div>
+          </div>
+          <div className="p-3 bg-accent rounded-lg text-xs text-foreground/80 flex gap-2">
+            <Bell className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <div>
+              <div className="font-semibold text-foreground mb-0.5">Tip: Privacy First</div>
+              <p className="leading-normal">All parser and merge outputs stay strictly on your local machine memory. Zero data leaks.</p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-6 flex justify-end">
+          <Button size="sm" onClick={() => setIsProfileOpen(false)}>Close</Button>
         </div>
       </Dialog>
 

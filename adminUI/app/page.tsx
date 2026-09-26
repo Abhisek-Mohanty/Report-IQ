@@ -17,6 +17,7 @@ import { VisualizationsView } from "@/components/views/VisualizationsView";
 import { QueryBuilderView } from "@/components/views/QueryBuilderView";
 import { ExportView } from "@/components/views/ExportView";
 import { ComingSoonView } from "@/components/views/ComingSoonView";
+import { AiInsightsView } from "@/components/views/AiInsightsView";
 
 export default function WorkspacePage() {
   const activeTab = useAnalyticsStore((state) => state.activeTab);
@@ -51,18 +52,8 @@ export default function WorkspacePage() {
       
       // AI Placeholders
       case "ai-insights":
-        return (
-          <ComingSoonView
-            title="AI Insights Engine"
-            description="Leverage localized, client-side WebLLM agents to perform zero-knowledge statistical regressions, predictive modeling, and data anomaly warnings directly on your spreadsheet files."
-            features={[
-              "Client-Side Local LLM Reasoning (no API calls)",
-              "Automatic Outlier & Anomaly Detection",
-              "Feature Engineering Recommendations",
-              "Trend & Seasonal Decomposition",
-            ]}
-          />
-        );
+        return <AiInsightsView/>;
+
       case "ai-chat":
         return (
           <ComingSoonView
