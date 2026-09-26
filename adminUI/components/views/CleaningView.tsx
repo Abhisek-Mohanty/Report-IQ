@@ -155,6 +155,9 @@ export function CleaningView() {
   const handleRemoveEmptyColumns = () => {
     if (!activeSheet) return;
     const cleaned = cleanRemoveEmptyColumns(activeSheet);
+    console.log(cleaned);
+    console.log(activeSheet);
+    
     const deletedCount = activeSheet.columnCount - cleaned.columnCount;
     updateActiveSheetData(cleaned);
     toast.success(`Removed ${deletedCount} empty columns`);

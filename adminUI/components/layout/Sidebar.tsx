@@ -43,7 +43,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: "export", name: "Export Report", icon: Download, category: "prep", requiresAuth: false },
   
   // AI Insights placeholders
-  { id: "ai-insights", name: "AI Insights", icon: Brain, category: "ai", requiresAuth: true },
+  { id: "ai-insights", name: "AI Insights", icon: Brain, category: "ai", requiresAuth: false },
   { id: "ai-chat", name: "AI Copilot Chat", icon: MessageSquareCode, category: "ai", requiresAuth: true },
   { id: "ai-query", name: "AI Query Agent", icon: SearchCode, category: "ai", requiresAuth: true },
   { id: "ai-report", name: "AI Report Builder", icon: FileHeart, category: "ai", requiresAuth: true },
@@ -67,7 +67,7 @@ export function Sidebar() {
           {items.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
-            const isDataRequired = ["datasets", "merge", "split", "cleaning", "query", "visualizations", "export"].includes(item.id);
+            const isDataRequired = ["datasets", "merge", "split", "cleaning", "query", "visualizations", "export", "ai-insights"].includes(item.id);
             const isDisabled = isDataRequired && datasets.length === 0;
 
             return (

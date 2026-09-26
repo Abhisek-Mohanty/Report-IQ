@@ -487,7 +487,10 @@ export function cleanRemoveDuplicates(sheet: SheetData): SheetData {
 
 export function cleanRemoveEmptyRows(sheet: SheetData): SheetData {
   const updatedRows = sheet.rows.filter((row) => {
-    return !Object.values(row).every((v) => v === null || v === undefined || v === "");
+    const isEmpty = Object.values(row).some(
+      (value) => value === null || value === undefined || (typeof value === "string" && value.trim() === "")
+    );
+    return !isEmpty;
   });
 
   return {
