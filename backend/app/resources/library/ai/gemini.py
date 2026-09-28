@@ -2,6 +2,7 @@ from google import genai
 from google.genai import types
 
 from app.core.config import GOOGLE_GEMINI
+from app.resources.prompt.system_instruction import SYSTEM_INSTRUCTIONS
 
 
 class GEMINI_AI:
@@ -17,7 +18,7 @@ class GEMINI_AI:
                         model="gemini-3.5-flash-lite",
                         contents=prompt,
                         config=types.GenerateContentConfig(
-                            system_instruction="your instructions",
+                            system_instruction=SYSTEM_INSTRUCTIONS,
                             max_output_tokens=100,
                             temperature=0.5,
                         )
