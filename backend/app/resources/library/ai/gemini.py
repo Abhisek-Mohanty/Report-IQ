@@ -1,0 +1,30 @@
+from google import genai
+from google.genai import types
+
+from app.core.config import GOOGLE_GEMINI
+
+
+class GEMINI_AI:
+
+    def __init__(self):
+        self.client = genai.Client(
+            api_key=GOOGLE_GEMINI
+        )
+
+    async def gemini_response(self, prompt: str):
+        try:
+            response = self.client.models.generate_content(
+                        model="gemini-3.5-flash-lite",
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction="your instructions",
+                            max_output_tokens=100,
+                            temperature=0.5,
+                        )
+                    )
+            
+            return response
+        
+        except Exception as error:
+            print("Error in External Model:", error)
+            return {"errorType": True, "message": "Error in External Model:"+ str(error) }
