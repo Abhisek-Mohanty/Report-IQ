@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useAnalyticsStore } from "@/store/useAnalyticsStore";
 import { analyzeDataset } from "@/utils/dataOperations";
 import { toast } from "@/components/ui/toast";
+import api from "@/lib/axios";
 import { 
   Brain, 
   Sparkles, 
@@ -63,11 +64,15 @@ export function AiInsightsView() {
   // View state for High Quality mode: "profile" vs "pivot"
   const [activeTabMode, setActiveTabMode] = useState<"profile" | "pivot">("profile");
 
+  console.log(activeSheet);
+  console.log(activeDataset);
+
   // Pivot Table configuration state
   const [rowField, setRowField] = useState<string>("");
   const [colField, setColField] = useState<string>("none");
   const [valField, setValField] = useState<string>("");
   const [aggFunc, setAggFunc] = useState<AggFunction>("sum");
+  const [posts, setPosts] = useState([]);
 
   // Search filter for column list
   const [searchColQuery, setSearchColQuery] = useState("");
@@ -102,6 +107,18 @@ export function AiInsightsView() {
       setAggFunc(nums.length > 0 ? "sum" : "count");
     }
   }, [activeSheet, columnCategories]);
+
+  async function fetchPosts() {
+      try {
+        console.log("inside fetchPosts");
+        
+        let payload = activeSheet
+        const response = await api.post("/aiInsights/trendAnalysis",payload);
+        setPosts(response.data);
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+      } 
+    }
 
   // Calculate total missing cells
   const totalMissingCells = useMemo(() => {
@@ -798,10 +815,7 @@ export function AiInsightsView() {
                 <Button
                   size="lg"
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-600/20 gap-2 text-sm px-6 h-12"
-                  onClick={() => {
-                    setActiveTabMode("pivot");
-                    toast.success("Opened Pivot Table Studio");
-                  }}
+                 onClick={fetchPosts}
                 >
                   <Grid3X3 className="h-5 w-5" />
                   <span>Summarize with Pivot Tables</span>

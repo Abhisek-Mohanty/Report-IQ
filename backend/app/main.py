@@ -40,7 +40,17 @@ def get_application() -> FastAPI:
             # allow_methods=["GET","POST","PUT","DELETE","HEAD","PATCH"],
             # allow_headers=['*','api-key','Content-Type','Content-Length','Content-Disposition','fileName','X-Parse-Token','Access-Control-Allow-Credentials'],
             # expose_headers=['Content-Disposition','fileName','X-Parse-Token']
-        )
+        ),
+        Middleware(
+                    CORSMiddleware,
+                    # SessionMiddleware,
+                    # secret_key = SECRET_KEY,
+                    allow_origins= ALLOWED_HOSTS,
+                    allow_credentials=True,
+                    allow_methods=["GET","POST","PUT","DELETE","HEAD","PATCH"],
+                    allow_headers=['*','api-key','Content-Type','Content-Length','Content-Disposition','fileName','X-Parse-Token','Access-Control-Allow-Credentials'],
+                    expose_headers=['Content-Disposition','fileName','X-Parse-Token']
+                )
     ]
 
     max_size = 50 * 1024 * 1024  # 50 megabytes                      

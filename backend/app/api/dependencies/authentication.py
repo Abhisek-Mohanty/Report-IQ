@@ -60,6 +60,7 @@ def _get_authorization_header(
         api_key: str = Security(RWAPIKeyHeader())
         ) -> str:
     try:
+        print(api_key.split(" "))
         token_prefix, token = api_key.split(" ")
     except ValueError:
         raise UnauthorizedAccess(
@@ -87,7 +88,10 @@ async def _get_current_user(
     token: str = Depends(_get_authorization_header_retriever()),
 ) -> User:
     try:
+        print("\n\n\n\n\n\n","_get_current_user",token,str(SECRET_KEY))
         oToken = jwt.get_username_from_token(token, str(SECRET_KEY))
+        print("\n\n\n\n\n\n","_get_current_user",oToken)
+
     except ValueError:
         raise UnauthorizedAccess(
             status_code=status.HTTP_403_FORBIDDEN, detail=error_strings.MALFORMED_PAYLOAD
