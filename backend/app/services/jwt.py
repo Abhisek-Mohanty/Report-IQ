@@ -45,7 +45,6 @@ def create_access_token_for_customer(user, secret_key: str, context: int) -> str
 
 def get_username_from_token(token: str, secret_key: str) -> str:
     try:
-        print("\n\n\n\n\n\n\n",jwt.decode(token, secret_key, algorithms=[ALGORITHM]),"get_username_from_token")
         return JWTUser(**jwt.decode(token, secret_key, algorithms=[ALGORITHM]))
     except jwt.PyJWTError as decode_error:
         raise ValueError("unable to decode JWT token") from decode_error
