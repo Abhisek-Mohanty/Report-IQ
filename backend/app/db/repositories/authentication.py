@@ -41,8 +41,11 @@ class AuthenticationRepository(BaseRepository):
             
             # print("#################################")
             # print(jsonable_encoder(user_row))
-            if user_row and user_row.isActive == False:
+            if user_row and user_row.isDisabled == False:
                 raise UnauthorizedAccess(403,"Unauthorized Access.")
+            if user_row and user_row.isLocked == False:
+                raise UnauthorizedAccess(403,"Your Account as been Suspended.")
+            
             
             
             if user_row:
@@ -52,6 +55,44 @@ class AuthenticationRepository(BaseRepository):
             
             raise EntityDoesNotExist("user does not exist")
         except Exception as error:
+            print(str(error))
+            raise UnauthorizedAccess(403,"Unauthorized Access.")
+        
+    async def get_user_by_sub(self, *, sub: str, payload:dict, context: str = "ReportIQ"):
+        try:
+            oModel = await self.getContextModel(context)
+            if oModel is None:
+                raise ErrorResponse(403, "Unauthorized Access. Try with valid portal.")
+        
+            user_row = self.db_session.query( oModel ).filter(
+                            oModel.sub == sub
+                        ).first()
+            if user_row:
+                oUserAuth = UserAuth( )
+                oUserAuth.data(user_row,context)
+                return oUserAuth
+            else:
+                now = Moment().now
+                oUser = oModel(
+                    emailId = getAttr(payload,"email",""),
+                    modeType = MODE_LOGIN.GOOGLE.value,
+                    planType= PLAN_TYPE.UNPAID.value,
+                    firstName= getAttr(payload,"given_name",""),
+                    lastName=getAttr(payload,"family_name",""),
+                    fullName=getAttr(payload,"name",""),
+                    sub=  getAttr(payload,"sub",""),
+                    profilePic=getAttr(payload,"picture",""),
+                    createdAt = now,
+                    updatedAt= now
+                )
+                self.save(oUser)
+                result = jsonable_encoder(oUser)
+                self.db_session.commit()
+                oUserAuth = UserAuth( )
+                oUserAuth.data(result,context)
+                return oUserAuth            
+        except Exception as error:
+            raise
             print(str(error))
             raise UnauthorizedAccess(403,"Unauthorized Access.")
    
@@ -573,7 +614,7 @@ class AuthenticationRepository(BaseRepository):
             return SendSuccessResponse(
                 message  = "User signup successfully."
             ).send()
-        except HTTPException:
+        except HTTPException as error:
             self.db_session.rollback()
             return SendErrorResponse(
                 message = "Something went wrong"
@@ -632,20 +673,17 @@ class AuthenticationRepository(BaseRepository):
 
          
 class UserAuth():
-    context: str = ""
-    salt: str = ""
-    hashed_password: str = ""
-    emailId: str = ""
     id : int = None
-    switchId : int = None
+    emailId: str = ""
     firstName : str = None
     lastName : str = None
-    resetPasswordToken : str = None
-    resetPasswordExpires : str = None
-    passwordChangeRequired : bool = None
-    organizationId : int = None
-    role: int = None
-    debug : bool = False
+    sub : str = None
+    modeType : str = None
+    profilePic : str = None
+    fullName : str = None
+
+
+
 
     def data(self, data : any, context : any):
         try:
@@ -655,16 +693,11 @@ class UserAuth():
             self.emailId = data.get("emailId") or data.get("email") 
             self.firstName = data.get("firstName")
             self.lastName = data.get("lastName")
-            self.resetPasswordToken = data.get("resetPasswordToken")
-            self.resetPasswordExpires = data.get("resetPasswordExpires")
-            self.passwordChangeRequired = data.get("passwordChangeRequired")
-            self.organizationId = data.get("organizationId")
-            self.role = data.get("role",None)
-            
-            if(data.get("salt")):
-                self.salt = data.get("salt")
-            if(data.get("password")):
-                self.hashed_password = data.get("password")
+            self.sub = data.get("sub")
+            self.modeType = data.get("modeType")
+            self.profilePic = data.get("profilePic")
+            self.fullName = data.get("fullName")
+
         except Exception as error:
             # raise error
             pass

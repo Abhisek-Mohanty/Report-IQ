@@ -11,7 +11,5 @@ class JWTMeta(BaseModel):
 class JWTUser(BaseModel):
     id: Optional[int] = None
     username: str = ""
-    context: Optional[int] = None
-    switchId: Optional[int] = None
-    project: Optional[int] = None
-    debug: bool = False
+    email:str = ""
+    sub:str = ""

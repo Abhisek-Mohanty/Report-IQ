@@ -99,34 +99,24 @@ async def _get_current_user(
 
     try:
         oReturn = None
-        # if oToken.context == "admin":
-        #     oReturn = await users_repo.get_user_by_email(email=oToken.username)
-        # elif oToken.context == "customer":
-        #     oReturn = await customer_repo.get_user_by_email(email=oToken.username)
-        # else:
         print("#################################")
-        print(oToken.switchId)
-        if hasattr(oToken,"switchId") and getattr(oToken,"switchId"):
-            print("Switch")
-            oReturn = await authentication_repo.get_user_by_id(id= str(oToken.switchId), context=oToken.context)
+        if hasattr(oToken,"id"):
+            oReturn = await authentication_repo.get_user_by_id(id= str(oToken.id), context="ReportIQ")
         else:
-            oReturn = await authentication_repo.get_user_by_email(email=oToken.username, context=oToken.context)
-                
-        if oToken.debug :
-            oReturn.debug = True
-        
-        oReturn.project = oToken.project or None
+            oReturn = await authentication_repo.get_user_by_sub(email=oToken.sub, context="ReportIQ")
+
+        oReturn.project = "RepostIQ"
 
         print("********************************************************************************")    
         print("Email ID :"+ oReturn.emailId)    
         print("Name     :"+ oReturn.firstName + " " + oReturn.lastName)    
-        print("Context  :"+ str(oToken.context))    
+        print("Mode  :"+ str(oReturn.modeType))    
         print("DateTime :"+ str(Moment().now)  )  
         print("_________________________________________________ Request Detail ===============>")    
-        oReturn.context = oToken.context
         return  oReturn
     # except EntityDoesNotExist:
     except BaseException as error:
+        raise error
         raise UnauthorizedAccess(
             status_code=status.HTTP_403_FORBIDDEN, detail=error_strings.MALFORMED_PAYLOAD
         )

@@ -28,13 +28,17 @@ class AiInsightsRepository(BaseRepository):
 
     async def getTrendAnalyis(self, user, payload):
         try:
+            print("\n\n\n\n\n",payload)
             if getAttr(payload,"excel_data",False):
                 return SendErrorResponse(
                         message = "Don't receive any data"
                     ).send() 
             gemini = GEMINI_AI()
             Input = []
-            
+            return SendSuccessResponse(
+                        data = []
+                    )
+    
 
             
         except Exception as error:

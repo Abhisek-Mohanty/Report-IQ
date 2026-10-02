@@ -24,11 +24,11 @@ def create_jwt_token(
 
 def create_access_token_for_user(user: User, secret_key: str = None, context: int = None, project : int = None, switchId : int = None, debug = False) -> str:
     return create_jwt_token(
-        jwt_content=JWTUser(username=user.email, 
-                             context = int(context) if context else 0, 
-                             switchId = switchId, 
-                             project = int(project if project else 0), 
-                             debug = debug ).dict(),
+        jwt_content=JWTUser(id=user.id,
+                            username=user.firstName,
+                            email=user.emailId,
+                            sub=user.sub
+                        ).dict(),
         secret_key=secret_key,
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )

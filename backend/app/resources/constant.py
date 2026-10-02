@@ -1,7 +1,9 @@
 from enum import Enum
 
-class ORGANIZATION(Enum):
-    TECHFINO = 1
+class MODE_LOGIN(Enum):
+    GOOGLE = 1
+class PLAN_TYPE(Enum):
+    UNPAID = 1
 
 class USER_CONTEXT(Enum):
     ADMIN    = 0 
@@ -176,3 +178,5 @@ OWNER_TYPE = {
     2: "BOYD",
     3: "Rented"
 }
+
+
