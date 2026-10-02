@@ -2,7 +2,7 @@ from google import genai
 from google.genai import types
 
 from app.core.config import GOOGLE_GEMINI
-from app.resources.prompt.system_instruction import SYSTEM_INSTRUCTIONS
+from backend.app.prompt.system_instruction import SYSTEM_INSTRUCTIONS
 
 
 class GEMINI_AI:
