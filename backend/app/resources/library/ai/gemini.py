@@ -1,8 +1,9 @@
 from google import genai
 from google.genai import types
+from app.db.errors import *
 
 from app.core.config import GOOGLE_GEMINI
-from backend.app.prompt.system_instruction import SYSTEM_INSTRUCTIONS
+from app.prompt.system_instruction import SYSTEM_INSTRUCTIONS
 
 
 class GEMINI_AI:
@@ -14,6 +15,8 @@ class GEMINI_AI:
 
     async def gemini_response(self, prompt: str,operation_instruction: str = ""):
         try:
+            if not prompt or type(prompt) != str:
+                raise ErrorResponse (504,"Please enter valid prompt.")
             response = self.client.models.generate_content(
                         model="gemini-3.5-flash-lite",
                         contents=prompt,

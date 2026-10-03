@@ -20,7 +20,7 @@ from app.api.errors.validation_error import http422_error_handler
 from app.api.routes.api import router as url_router
 from app.api.routes.openApi import router as api_router
 from app.api.routes.ws import router as ws_router
-from app.api.routes.webhook import router as webhook_router
+# from app.api.routes.webhook import router as webhook_router
 from app.api.routes.cron import router as cron_router
 
 from app.core.config import API_PREFIX, ENVIRONMENT, URL_PREFIX, WEBHOOK_PREFIX, WS_PREFIX,SECRET_KEY
@@ -108,12 +108,12 @@ def get_application() -> FastAPI:
         prefix=WS_PREFIX
     )
     
-    # Webhook Routers
-    application.include_router(
-        webhook_router, 
-        dependencies=[Depends(check_request_size), Depends(securityCheck)],
-        prefix=WEBHOOK_PREFIX
-    )
+    # # Webhook Routers
+    # application.include_router(
+    #     webhook_router, 
+    #     dependencies=[Depends(check_request_size), Depends(securityCheck)],
+    #     prefix=WEBHOOK_PREFIX
+    # )
     
     args = sys.argv
     if "CRON:ENABLED" in args:

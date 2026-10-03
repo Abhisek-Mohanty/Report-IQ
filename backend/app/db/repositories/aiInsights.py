@@ -32,6 +32,9 @@ class AiInsightsRepository(BaseRepository):
                 return SendErrorResponse(
                         message = "Don't receive any data"
                     ).send() 
+
+
+            
             gemini = GEMINI_AI()
             Input = []
             return SendSuccessResponse(
