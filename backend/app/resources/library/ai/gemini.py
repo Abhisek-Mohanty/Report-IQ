@@ -12,18 +12,17 @@ class GEMINI_AI:
             api_key=GOOGLE_GEMINI
         )
 
-    async def gemini_response(self, prompt: str):
+    async def gemini_response(self, prompt: str,operation_instruction: str = ""):
         try:
             response = self.client.models.generate_content(
                         model="gemini-3.5-flash-lite",
                         contents=prompt,
                         config=types.GenerateContentConfig(
-                            system_instruction=SYSTEM_INSTRUCTIONS,
+                            system_instruction=SYSTEM_INSTRUCTIONS + "\n\n"+ operation_instruction,
                             max_output_tokens=100,
                             temperature=0.5,
                         )
                     )
-            
             return response
         
         except Exception as error:
