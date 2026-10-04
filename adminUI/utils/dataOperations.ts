@@ -668,3 +668,26 @@ export function filterDataset(sheet: SheetData, group: FilterGroup): SheetData {
     rowCount: rows.length,
   };
 }
+
+
+export function exampleRows(arr:any){
+    const length = arr.length;
+
+    // If less than 5, return all data
+    if (length < 5) {
+        return arr;
+    }
+
+    // If greater than 100, take 10 random items
+    if (length > 100) {
+        return getRandomItems(arr, 10);
+    }
+
+    return getRandomItems(arr, 5);
+
+function getRandomItems(arr:[], count) {
+    const shuffled = [...arr].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
+}
+
+}

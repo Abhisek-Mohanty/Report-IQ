@@ -31,7 +31,11 @@ class AiInsightsRepository(BaseRepository):
             if getAttr(payload,"excel_data",False):
                 return SendErrorResponse(
                         message = "Don't receive any data"
-                    ).send() 
+                    ).send()
+            oDataSet = DataSet(
+                
+
+                ) 
 
 
             

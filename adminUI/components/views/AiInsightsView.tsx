@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useAnalyticsStore } from "@/store/useAnalyticsStore";
-import { analyzeDataset } from "@/utils/dataOperations";
+import { analyzeDataset, exampleRows } from "@/utils/dataOperations";
 import { toast } from "@/components/ui/toast";
 import api from "@/lib/axios";
 import { 
@@ -111,8 +111,12 @@ export function AiInsightsView() {
   async function fetchPosts() {
       try {
         console.log("inside fetchPosts");
+        const payload = {
+            ...activeSheet,
+            rows: exampleRows(activeSheet && activeSheet.rows ? activeSheet.rows : [])
+        };
+        console.log( exampleRows(activeSheet && activeSheet.rows ? activeSheet.rows : []),"--------->");
         
-        let payload = activeSheet
         const response = await api.post("/aiInsights/trendAnalysis",payload);
         setPosts(response.data);
       } catch (error) {
