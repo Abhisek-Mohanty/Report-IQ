@@ -5,6 +5,9 @@ class MODE_LOGIN(Enum):
 class PLAN_TYPE(Enum):
     UNPAID = 1
 
+class COVERSATION_TYPE(Enum):
+    AI_INSIGHTS = 1
+
 class USER_CONTEXT(Enum):
     ADMIN    = 0 
     CUSTOMER = 1

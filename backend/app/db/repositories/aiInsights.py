@@ -13,7 +13,7 @@ from app.db.repositories.base import BaseRepository
 from app.resources.helper.moment import Moment
 from app.db.repositories.base import BaseRepository
 from app.core.config import CLIENT_PATH, DEFAULT_PASSWORD, SUPPORT_MAILID, HR_SUPPORT_MAIL, VERIFICATION_LINK_VALID_DAYS
-from app.resources.constant import ASSET_TYPE,ASSET_STATUS, EMPLOYEEMENT_STATUS, STATUS, VERIFCATION_TYPE, ASSET_STATUS_TYPE, ASSIGN_STATUS_TYPE, MAINTAINCE_STATUS_TYPE
+from app.resources.constant import ASSET_TYPE,ASSET_STATUS,COVERSATION_TYPE
 from app.services import security
 from app.resources.library.S3.index import s3Bucket
 from app.resources.library.email.sns import SnsEmail
@@ -32,12 +32,46 @@ class AiInsightsRepository(BaseRepository):
                 return SendErrorResponse(
                         message = "Don't receive any data"
                     ).send()
+            now = Moment.now()
             oDataSet = DataSet(
-                
-
+                rowSchema = json.dumps(getAttr(payload,"columnTypes",[])),
+                sourceFileName = getAttr(payload,"name","NA"),
+                rowCount = getAttr(payload,"rowCount",0),
+                rowExamples = json.dumps(getAttr(payload,"rows",[])),
+                createdBy = user.id,
+                updatedAt = now,
+                createdAt = now,
+                updatedBy = user.id
                 ) 
+            self.save(oDataSet)
+            oDataSet.dataSetNumber = f"DS-{now.strftime("%Y%m%d")}-{oDataSet:06d}"
 
+            oConversation = Conversation(
+                    dataSetId = oDataSet.id,
+                    type = COVERSATION_TYPE.AI_INSIGHTS.value,
+                    createdBy = user.id, 
+                    updatedBy = user.id, 
+                    createdAt = now, 
+                    updatedAt = now, 
+                )
+            self.save(oConversation)
 
+            # oAcitvityLog = ActivityLog(
+            #         dataSetId = Column("dataSetId", Integer , ForeignKey("DataSets.id"))
+            #         conversationId = Column("conversationId", Integer , ForeignKey("Conversations.id"))
+            #         prompt = Column("prompt", String)
+            #         promptType = Column("promptType", Integer)
+            #         statusCode = Column("statusCode", String)
+            #         response   = Column("response", String)
+            #         promptToken = Column("promptToken", Float)
+            #         completionToken = Column("completionToken", Float)
+            #         totalTokens = Column("totalTokens", Float)
+            #         createdBy = Column("createdBy", Integer , ForeignKey("Users.id")) 
+            #         updatedBy = Column("updatedBy", Integer , ForeignKey("Users.id")) 
+            #         createdAt = Column("createdAt", DateTime ) 
+            #         updatedAt = Column("updatedAt", DateTime )
+
+            # )
             
             gemini = GEMINI_AI()
             Input = []
