@@ -8,6 +8,10 @@ class PLAN_TYPE(Enum):
 class COVERSATION_TYPE(Enum):
     AI_INSIGHTS = 1
 
+class PROMPT_TYPE(Enum):
+    PREDEFINED = 1
+    CUSTOMISZED = 2
+
 class USER_CONTEXT(Enum):
     ADMIN    = 0 
     CUSTOMER = 1

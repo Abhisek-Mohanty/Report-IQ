@@ -1,4 +1,4 @@
-AI_INSIGHTS_DATASET_PATTERN = """You are currently operating as the ReportIQ AI Pattern Engine.
+AI_INSIGHTS_DATASET_PATTERN_SYSTEM_INSTRUCTION = """You are currently operating as the ReportIQ AI Pattern Engine.
 
 Your specific responsibility is to inspect a DATASET PROFILE and recommend
 the most useful analysis scenarios that a data analyst would investigate.
@@ -463,3 +463,12 @@ Before returning the JSON, verify:
 
 If any answer is "no", correct the response before returning it.
 """
+
+
+AI_INSIGHTS_DATASET_PATTERN_USER_PROMPT ="""Analyze the following dataset profile and generate the most useful analysis scenarios for the ReportIQ AI Pattern Engine.
+
+DATASET PROFILE:
+
+{PAYLOAD}
+
+Return the required STRICT JSON response."""
