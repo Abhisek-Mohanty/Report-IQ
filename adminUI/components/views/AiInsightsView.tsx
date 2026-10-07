@@ -30,10 +30,18 @@ import {
   Check,
   Zap,
   Grid3X3,
-  Columns
+  Columns,
+  Plus,
+  Search,
+  CheckSquare,
+  Square,
+  ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import * as XLSX from "xlsx";
+import { AiScenario } from "@/types";
+import { CustomRelationshipModal } from "./CustomRelationshipModal";
+import { DetailedInsightsModal } from "./DetailedInsightsModal";
 
 type AggFunction = "sum" | "avg" | "count" | "min" | "max";
 
@@ -61,18 +69,30 @@ export function AiInsightsView() {
     return analyzeDataset(activeSheet);
   }, [activeSheet]);
 
-  // View state for High Quality mode: "profile" vs "pivot"
-  const [activeTabMode, setActiveTabMode] = useState<"profile" | "pivot">("profile");
-
-  console.log(activeSheet);
-  console.log(activeDataset);
+  // View state for High Quality mode: "relationships" vs "pivot" vs "profile"
+  const [activeTabMode, setActiveTabMode] = useState<"profile" | "pivot" | "relationships">("relationships");
 
   // Pivot Table configuration state
   const [rowField, setRowField] = useState<string>("");
   const [colField, setColField] = useState<string>("none");
   const [valField, setValField] = useState<string>("");
   const [aggFunc, setAggFunc] = useState<AggFunction>("sum");
-  const [posts, setPosts] = useState([]);
+
+  // AI Scenarios & Relationships state
+  const [scenarios, setScenarios] = useState<AiScenario[]>([]);
+  const [datasetSummary, setDatasetSummary] = useState<string>("");
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [selectedScenarioIds, setSelectedScenarioIds] = useState<Set<string>>(new Set());
+
+  // Filters for Scenarios View
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [columnFilter, setColumnFilter] = useState<string | null>(null);
+  const [searchScenarioQuery, setSearchScenarioQuery] = useState<string>("");
+
+  // Modals state
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState<boolean>(false);
+  const [isDetailedModalOpen, setIsDetailedModalOpen] = useState<boolean>(false);
+  const [scenarioForDetailModal, setScenarioForDetailModal] = useState<AiScenario[]>([]);
 
   // Search filter for column list
   const [searchColQuery, setSearchColQuery] = useState("");
@@ -108,21 +128,243 @@ export function AiInsightsView() {
     }
   }, [activeSheet, columnCategories]);
 
-  async function fetchPosts() {
-      try {
-        console.log("inside fetchPosts");
-        const payload = {
-            ...activeSheet,
-            rows: exampleRows(activeSheet && activeSheet.rows ? activeSheet.rows : [])
-        };
-        console.log( exampleRows(activeSheet && activeSheet.rows ? activeSheet.rows : []),"--------->");
-        
-        const response = await api.post("/aiInsights/trendAnalysis",payload);
-        setPosts(response.data);
-      } catch (error) {
-        console.error('Error fetching posts:', error);
-      } 
+  // Toggle scenario selection
+  const handleToggleScenarioSelect = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedScenarioIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Select all or clear selection
+  const handleSelectAllScenarios = (ids: string[]) => {
+    if (selectedScenarioIds.size === ids.length && ids.length > 0) {
+      setSelectedScenarioIds(new Set());
+    } else {
+      setSelectedScenarioIds(new Set(ids));
     }
+  };
+
+  // Launch single scenario detailed inspection
+  const handleInspectSingleScenario = (scenario: AiScenario) => {
+    setScenarioForDetailModal([scenario]);
+    setIsDetailedModalOpen(true);
+  };
+
+  // Launch multiple selected scenarios detailed inspection
+  const handleInspectSelectedScenarios = () => {
+    const selected = scenarios.filter((s) => selectedScenarioIds.has(s.id));
+    if (selected.length === 0) {
+      toast.error("Please select at least one relationship scenario.");
+      return;
+    }
+    console.log(selectedDatasetId);
+    setScenarioForDetailModal(selected);
+    setIsDetailedModalOpen(true);
+  };
+
+  // Transfer scenario dimensions into the Pivot Table Studio
+  const handleOpenInPivot = (scenario: AiScenario) => {
+    const col1 = scenario.columns[0] || activeSheet?.headers[0] || "";
+    const col2 = scenario.columns[1] || "";
+    if (col1) setRowField(col1);
+    if (col2) {
+      setValField(col2);
+      setColField("none");
+      setAggFunc(activeSheet?.columnTypes[col2] === "number" ? "sum" : "count");
+    } else {
+      setColField("none");
+    }
+    setActiveTabMode("pivot");
+    toast.success(`Configured Pivot Matrix for "${scenario.title}"`);
+  };
+
+  // Add custom user-defined scenario
+  const handleAddCustomScenario = (newScenario: AiScenario) => {
+    setScenarios((prev) => [newScenario, ...prev]);
+    setSelectedScenarioIds((prev) => new Set([...prev, newScenario.id]));
+    setActiveTabMode("relationships");
+  };
+
+  // Load sample scenarios (convenience for demo / offline testing)
+  const loadSampleScenarios = () => {
+    const sampleSummary = "The dataset contains 549 rows and 32 columns detailing loan applications, including financial amounts, status, branch information, processing dates, and co-lender details.";
+    const sampleScenarios: AiScenario[] = [
+      {
+        id: "s1",
+        title: "Service Amount by Loan Type",
+        category: "category",
+        columns: ["LoanType", "Service Amount"],
+        analysisType: "group_comparison",
+        method: "groupby-aggregate",
+        suggestedChart: "bar",
+        businessQuestion: "How do service amounts vary across different loan types?",
+        whyItMatters: "Helps identify which loan products drive the highest capital volume.",
+        confidence: "high",
+        confidenceReason: "Both LoanType and Service Amount columns are present with valid data types."
+      },
+      {
+        id: "s2",
+        title: "Loan Status Distribution",
+        category: "category",
+        columns: ["Status"],
+        analysisType: "distribution",
+        method: "groupby-aggregate",
+        suggestedChart: "pie",
+        businessQuestion: "What is the breakdown of loan applications by their current status?",
+        whyItMatters: "Provides visibility into the overall approval, rejection, and cancellation rates.",
+        confidence: "high",
+        confidenceReason: "Status column is fully populated with distinct categorical values across rows."
+      },
+      {
+        id: "s3",
+        title: "Interest Rate by Co-Lender",
+        category: "category",
+        columns: ["Co-Lender Name", "IRR"],
+        analysisType: "group_comparison",
+        method: "groupby-aggregate",
+        suggestedChart: "bar",
+        businessQuestion: "How do interest rates (IRR) differ among various co-lenders?",
+        whyItMatters: "Enables comparison of pricing and yields across different lending partners.",
+        confidence: "high",
+        confidenceReason: "Co-Lender Name and numeric IRR columns are both available."
+      },
+      {
+        id: "s4",
+        title: "Service Amount Outliers",
+        category: "anomaly",
+        columns: ["Service Amount"],
+        analysisType: "outlier_detection",
+        method: "IQR",
+        suggestedChart: "box",
+        businessQuestion: "Are there any unusually high or low service amounts in the applications?",
+        whyItMatters: "Identifies extreme loan requests that may require special risk review.",
+        confidence: "high",
+        confidenceReason: "Service Amount is a continuous numeric measure with sufficient data points."
+      },
+      {
+        id: "s5",
+        title: "Applications Over Time",
+        category: "trend",
+        columns: ["Submit Date"],
+        analysisType: "time_series",
+        method: "time-aggregation",
+        suggestedChart: "line",
+        businessQuestion: "How do loan application volumes trend over submission dates?",
+        whyItMatters: "Reveals peak application periods and submission activity patterns over time.",
+        confidence: "medium",
+        confidenceReason: "Submit Date is stored as string formatting and requires parsing into datetime."
+      },
+      {
+        id: "s6",
+        title: "Duplicate Application Check",
+        category: "anomaly",
+        columns: ["Application Number"],
+        analysisType: "duplicate_check",
+        method: "duplicate-check",
+        suggestedChart: "bar",
+        businessQuestion: "Are there any duplicate application numbers in the dataset?",
+        whyItMatters: "Ensures data integrity and prevents double-counting of applications.",
+        confidence: "high",
+        confidenceReason: "Application Number serves as a unique identifier column."
+      },
+      {
+        id: "s7",
+        title: "Service Amount by Branch",
+        category: "category",
+        columns: ["Branch", "Service Amount"],
+        analysisType: "group_comparison",
+        method: "groupby-aggregate",
+        suggestedChart: "bar",
+        businessQuestion: "Which branches process the highest total service amounts?",
+        whyItMatters: "Highlights top-performing branch locations by business volume.",
+        confidence: "high",
+        confidenceReason: "Branch category and Service Amount numeric measure are both present."
+      }
+    ];
+
+    setDatasetSummary(sampleSummary);
+    setScenarios(sampleScenarios);
+    setSelectedScenarioIds(new Set(["s1", "s2"]));
+    setActiveTabMode("relationships");
+    toast.success("Loaded 7 loan application relationship scenarios!");
+  };
+
+  // Fetch AI Scenarios from API
+  async function fetchPosts() {
+    if (!activeSheet) {
+      toast.error("No active sheet selected.");
+      return;
+    }
+
+    try {
+      setIsAnalyzing(true);
+      const payload = {
+        ...activeSheet,
+        rows: exampleRows(activeSheet && activeSheet.rows ? activeSheet.rows : [])
+      };        
+      const response = await api.post("/aiInsights/trendAnalysis", payload);
+      const resData = response.data?.data || response.data;
+      
+      const summary = resData?.datasetSummary || "Dataset column relationship analysis generated successfully.";
+      const incomingScenarios: AiScenario[] = Array.isArray(resData?.scenarios) ? resData.scenarios : [];
+
+      setDatasetSummary(summary);
+      setScenarios(incomingScenarios);
+      
+      if (incomingScenarios.length > 0) {
+        setSelectedScenarioIds(new Set([incomingScenarios[0].id]));
+      }
+
+      setActiveTabMode("relationships");
+      toast.success(`AI Pattern Engine discovered ${incomingScenarios.length} relationships!`);
+    } catch (error: any) {
+      console.error('Error fetching AI insights:', error);
+      toast.error(error?.response?.data?.detail || "Could not reach AI backend. Loading sample scenarios...");
+      loadSampleScenarios();
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }
+
+  // Unique columns participating in any scenario
+  const connectedColumns = useMemo(() => {
+    const colCounts: Record<string, number> = {};
+    scenarios.forEach((sc) => {
+      sc.columns.forEach((col) => {
+        colCounts[col] = (colCounts[col] || 0) + 1;
+      });
+    });
+    return Object.entries(colCounts).sort((a, b) => b[1] - a[1]);
+  }, [scenarios]);
+
+  // Filtered scenarios for showcase
+  const filteredScenarios = useMemo(() => {
+    return scenarios.filter((sc) => {
+      if (categoryFilter !== "all") {
+        if (categoryFilter === "custom" && !sc.isCustom) return false;
+        if (categoryFilter !== "custom" && sc.category !== categoryFilter) return false;
+      }
+      if (columnFilter && !sc.columns.includes(columnFilter)) {
+        return false;
+      }
+      if (searchScenarioQuery.trim()) {
+        const q = searchScenarioQuery.toLowerCase();
+        const matchesTitle = sc.title.toLowerCase().includes(q);
+        const matchesQuestion = sc.businessQuestion.toLowerCase().includes(q);
+        const matchesCol = sc.columns.some((c) => c.toLowerCase().includes(q));
+        if (!matchesTitle && !matchesQuestion && !matchesCol) return false;
+      }
+      return true;
+    });
+  }, [scenarios, categoryFilter, columnFilter, searchScenarioQuery]);
+
 
   // Calculate total missing cells
   const totalMissingCells = useMemo(() => {
@@ -819,10 +1061,15 @@ export function AiInsightsView() {
                 <Button
                   size="lg"
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-600/20 gap-2 text-sm px-6 h-12"
-                 onClick={fetchPosts}
+                  onClick={fetchPosts}
+                  disabled={isAnalyzing}
                 >
-                  <Grid3X3 className="h-5 w-5" />
-                  <span>Summarize with Pivot Tables</span>
+                  {isAnalyzing ? (
+                    <RefreshCw className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-5 w-5 text-amber-300" />
+                  )}
+                  <span>{isAnalyzing ? "Analyzing Relationships..." : "Summarize with Pivot Tables & AI"}</span>
                   <ArrowRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
@@ -830,17 +1077,24 @@ export function AiInsightsView() {
             </div>
 
             {/* Sub-tab navigation */}
-            <div className="flex items-center gap-2 mt-6 pt-4 border-t border-emerald-500/20">
+            <div className="flex items-center gap-2 mt-6 pt-4 border-t border-emerald-500/20 overflow-x-auto">
               <button
-                onClick={() => setActiveTabMode("profile")}
+                onClick={() => setActiveTabMode("relationships")}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                  activeTabMode === "profile"
-                    ? "bg-primary text-white shadow-sm"
+                  activeTabMode === "relationships"
+                    ? "bg-violet-600 text-white shadow-sm shadow-violet-600/20"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
               >
-                <Activity className="h-3.5 w-3.5" />
-                <span>Data Health & Column Profiler</span>
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>AI Column Relationships</span>
+                {scenarios.length > 0 && (
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                    activeTabMode === "relationships" ? "bg-white/20 text-white" : "bg-violet-500/20 text-violet-500"
+                  }`}>
+                    {scenarios.length}
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => setActiveTabMode("pivot")}
@@ -852,6 +1106,17 @@ export function AiInsightsView() {
               >
                 <Grid3X3 className="h-3.5 w-3.5" />
                 <span>Pivot Table Summary Matrix</span>
+              </button>
+              <button
+                onClick={() => setActiveTabMode("profile")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                  activeTabMode === "profile"
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
+              >
+                <Activity className="h-3.5 w-3.5" />
+                <span>Data Health & Column Profiler</span>
               </button>
             </div>
           </div>
@@ -1213,9 +1478,420 @@ export function AiInsightsView() {
             </div>
           )}
 
+          {/* VIEW MODE 3: AI COLUMN RELATIONSHIPS & SCENARIOS SHOWCASE */}
+          {activeTabMode === "relationships" && (
+            <div className="flex flex-col gap-6">
+
+              {/* No scenarios loaded yet state */}
+              {scenarios.length === 0 ? (
+                <div className="bg-card border border-border rounded-2xl p-10 text-center space-y-5 shadow-sm max-w-2xl mx-auto my-6">
+                  <div className="h-16 w-16 rounded-2xl bg-violet-500/20 text-violet-500 border border-violet-500/30 flex items-center justify-center mx-auto shadow-sm">
+                    <Sparkles className="h-8 w-8 animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-extrabold text-xl text-foreground">
+                      AI Column Relationships & Pattern Discovery
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
+                      Scan your spreadsheet with ReportIQ's Pattern Engine to uncover statistical relationships, cross-column correlations, segment volumes, chronological trends, and anomaly bounds.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    <Button
+                      size="lg"
+                      onClick={fetchPosts}
+                      disabled={isAnalyzing}
+                      className="bg-violet-600 hover:bg-violet-700 text-white font-bold gap-2 shadow-lg shadow-violet-600/20 text-xs px-6 h-11"
+                    >
+                      {isAnalyzing ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4 text-amber-300" />
+                      )}
+                      <span>{isAnalyzing ? "Scanning Relationships..." : "Discover Relationships with AI"}</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={loadSampleScenarios}
+                      className="gap-2 text-xs font-semibold h-11 text-foreground"
+                    >
+                      <Database className="h-4 w-4 text-emerald-500" />
+                      <span>Load Sample Lending Scenarios</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => setIsCustomModalOpen(true)}
+                      className="gap-2 text-xs font-semibold h-11 text-foreground"
+                    >
+                      <Plus className="h-4 w-4 text-primary" />
+                      <span>+ Custom Relationship</span>
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Dataset Summary Banner */}
+                  <div className="rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/10 via-violet-500/5 to-transparent p-6 shadow-md relative overflow-hidden">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                      <div className="flex items-start gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-violet-500/20 border border-violet-500/30 text-violet-500 flex items-center justify-center shrink-0 shadow-sm">
+                          <Sparkles className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/30 text-[10px] font-bold text-violet-500 uppercase tracking-wider mb-1.5">
+                            <CheckCircle2 className="h-3 w-3" />
+                            <span>ReportIQ Pattern Engine • Multi-Column Discovery</span>
+                          </div>
+                          <h3 className="font-display font-bold text-lg text-foreground">
+                            {datasetSummary || `Identified ${scenarios.length} high-value relationships across ${activeSheet.headers.length} attributes.`}
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-1 max-w-2xl leading-relaxed">
+                            Select one or multiple relationship scenarios below to compute empirical statistics, generate visual charts, and produce tailored AI insights. You can also construct custom cross-column relationships.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Summary Metrics & Actions */}
+                      <div className="shrink-0 flex items-center gap-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={fetchPosts}
+                          disabled={isAnalyzing}
+                          className="gap-1.5 text-xs text-foreground"
+                        >
+                          <RefreshCw className={`h-3.5 w-3.5 ${isAnalyzing ? "animate-spin" : ""}`} />
+                          <span>Re-Scan Dataset</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsCustomModalOpen(true)}
+                          className="gap-1.5 text-xs text-primary border-primary/30 hover:bg-primary/10"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          <span>+ Custom Relation</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Connected Columns Interactive Filter Bar */}
+                  {connectedColumns.length > 0 && (
+                    <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                          <Layers className="h-3.5 w-3.5 text-primary" />
+                          <span>Filter by Connected Column:</span>
+                        </span>
+                        {columnFilter && (
+                          <button
+                            onClick={() => setColumnFilter(null)}
+                            className="text-[11px] text-primary hover:underline font-semibold"
+                          >
+                            Clear Column Filter
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => setColumnFilter(null)}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                            columnFilter === null
+                              ? "bg-primary text-white shadow-sm"
+                              : "bg-accent/60 text-foreground hover:bg-accent"
+                          }`}
+                        >
+                          All Columns ({scenarios.length})
+                        </button>
+                        {connectedColumns.map(([colName, count]) => {
+                          const isActive = columnFilter === colName;
+                          return (
+                            <button
+                              key={colName}
+                              onClick={() => setColumnFilter(isActive ? null : colName)}
+                              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                                isActive
+                                  ? "bg-violet-600 text-white shadow-sm"
+                                  : "bg-accent/60 text-foreground hover:bg-accent"
+                              }`}
+                            >
+                              <span>{colName}</span>
+                              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                                isActive ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                              }`}>
+                                {count}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Controls & Filter Bar */}
+                  <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      {/* Category Filter Pills */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {[
+                          { id: "all", label: "All Relationships", count: scenarios.length },
+                          { id: "category", label: "Category Comparisons", count: scenarios.filter((s) => s.category === "category").length },
+                          { id: "trend", label: "Trends & Timeseries", count: scenarios.filter((s) => s.category === "trend").length },
+                          { id: "anomaly", label: "Anomalies & Outliers", count: scenarios.filter((s) => s.category === "anomaly").length },
+                          { id: "relationship", label: "Correlations", count: scenarios.filter((s) => s.category === "relationship").length },
+                          { id: "custom", label: "Custom Relations", count: scenarios.filter((s) => s.isCustom).length },
+                        ].map((cat) => {
+                          const isActive = categoryFilter === cat.id;
+                          return (
+                            <button
+                              key={cat.id}
+                              onClick={() => setCategoryFilter(cat.id)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                isActive
+                                  ? "bg-primary text-white shadow-sm"
+                                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                              }`}
+                            >
+                              <span>{cat.label}</span>
+                              <span className="opacity-70 font-mono text-[10px]">({cat.count})</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Text Search Input */}
+                      <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Search relationship or question..."
+                          value={searchScenarioQuery}
+                          onChange={(e) => setSearchScenarioQuery(e.target.value)}
+                          className="w-full bg-accent/40 text-foreground border border-border rounded-lg pl-8 pr-3 py-1.5 text-xs focus:ring-2 focus:ring-primary/40 focus:outline-none font-medium"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Action & Selection Bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-border">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleSelectAllScenarios(filteredScenarios.map((s) => s.id))}
+                          className="text-xs font-semibold text-primary hover:underline flex items-center gap-1.5"
+                        >
+                          {selectedScenarioIds.size === filteredScenarios.length && filteredScenarios.length > 0 ? (
+                            <>
+                              <CheckSquare className="h-3.5 w-3.5" />
+                              <span>Deselect All</span>
+                            </>
+                          ) : (
+                            <>
+                              <Square className="h-3.5 w-3.5" />
+                              <span>Select All ({filteredScenarios.length})</span>
+                            </>
+                          )}
+                        </button>
+
+                        <span className="text-xs text-muted-foreground font-medium">
+                          Selected: <strong className="text-foreground">{selectedScenarioIds.size}</strong> of {filteredScenarios.length} relationships
+                        </span>
+                      </div>
+
+                      {/* Prominent Action Button: Generate Detailed AI Insights */}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          onClick={handleInspectSelectedScenarios}
+                          disabled={selectedScenarioIds.size === 0}
+                          className="bg-gradient-to-r from-violet-600 to-primary hover:from-violet-700 hover:to-primary/90 text-white font-bold gap-2 text-xs shadow-md shadow-violet-600/20 px-5 h-9"
+                        >
+                          <Sparkles className="h-4 w-4 text-amber-300" />
+                          <span>
+                            {selectedScenarioIds.size > 0
+                              ? `Get Detailed AI Insights (${selectedScenarioIds.size} Selected)`
+                              : "Select Relations for Detailed Insights"}
+                          </span>
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Relationship Scenarios Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredScenarios.map((sc) => {
+                      const isSelected = selectedScenarioIds.has(sc.id);
+
+                      // Category style
+                      let catColor = "bg-purple-500/10 text-purple-500 border-purple-500/20";
+                      if (sc.category === "anomaly") catColor = "bg-rose-500/10 text-rose-500 border-rose-500/20";
+                      else if (sc.category === "trend") catColor = "bg-sky-500/10 text-sky-500 border-sky-500/20";
+                      else if (sc.category === "relationship") catColor = "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
+
+                      return (
+                        <div
+                          key={sc.id}
+                          onClick={() => handleToggleScenarioSelect(sc.id)}
+                          className={`rounded-xl border p-5 transition-all duration-200 cursor-pointer flex flex-col justify-between relative group ${
+                            isSelected
+                              ? "bg-card border-violet-500/80 ring-2 ring-violet-500/20 shadow-md"
+                              : "bg-card border-border hover:border-violet-500/40 hover:shadow-sm"
+                          }`}
+                        >
+                          {/* Top Row: Checkbox, Category, Confidence */}
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleToggleScenarioSelect(sc.id, e)}
+                                  className={`h-5 w-5 rounded flex items-center justify-center transition-colors border ${
+                                    isSelected
+                                      ? "bg-violet-600 border-violet-600 text-white"
+                                      : "border-border bg-accent/40 hover:border-primary text-transparent"
+                                  }`}
+                                >
+                                  <Check className="h-3.5 w-3.5 stroke-[3]" />
+                                </button>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${catColor}`}>
+                                  {sc.category}
+                                </span>
+                                {sc.isCustom && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                                    Custom
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono">
+                                <span className={`h-2 w-2 rounded-full ${
+                                  sc.confidence === "high" ? "bg-emerald-500" : sc.confidence === "medium" ? "bg-amber-500" : "bg-slate-400"
+                                }`} />
+                                <span className="capitalize">{sc.confidence}</span>
+                              </div>
+                            </div>
+
+                            {/* Title */}
+                            <h4 className="font-display font-bold text-base text-foreground leading-snug group-hover:text-primary transition-colors">
+                              {sc.title}
+                            </h4>
+
+                            {/* Connected Columns Badges */}
+                            <div className="flex flex-wrap items-center gap-1.5 my-3">
+                              {sc.columns.map((c, i) => (
+                                <React.Fragment key={c}>
+                                  <span className="px-2 py-0.5 rounded bg-accent/70 border border-border text-[11px] font-semibold text-foreground font-mono">
+                                    {c}
+                                  </span>
+                                  {i < sc.columns.length - 1 && (
+                                    <span className="text-[10px] text-muted-foreground font-bold">↔</span>
+                                  )}
+                                </React.Fragment>
+                              ))}
+                            </div>
+
+                            {/* Method & Suggested Chart */}
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-3">
+                              <span className="px-2 py-0.5 rounded bg-accent/50 text-[10px] font-mono">
+                                {sc.method}
+                              </span>
+                              <span>•</span>
+                              <span className="capitalize text-[10px]">
+                                {sc.suggestedChart} chart
+                              </span>
+                            </div>
+
+                            {/* Business Question Quote Callout */}
+                            <div className="bg-accent/30 border-l-2 border-primary/60 rounded-r-lg p-2.5 my-2">
+                              <p className="text-xs text-foreground font-semibold italic">
+                                "{sc.businessQuestion}"
+                              </p>
+                            </div>
+
+                            {/* Why It Matters */}
+                            <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2 mt-2">
+                              {sc.whyItMatters}
+                            </p>
+                          </div>
+
+                          {/* Card Footer Actions */}
+                          <div className="pt-4 mt-4 border-t border-border flex items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleInspectSingleScenario(sc);
+                              }}
+                              className="text-xs font-bold text-violet-500 hover:text-violet-600 flex items-center gap-1 transition-colors"
+                            >
+                              <span>Detailed Insights</span>
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenInPivot(sc);
+                              }}
+                              className="text-[11px] font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                            >
+                              <Grid3X3 className="h-3 w-3" />
+                              <span>Pivot Matrix</span>
+                            </button>
+                          </div>
+
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {filteredScenarios.length === 0 && (
+                    <div className="p-8 text-center text-xs text-muted-foreground bg-card border border-border rounded-xl">
+                      No relationship scenarios match the selected filters. Try choosing "All Relationships" or clear your search query.
+                    </div>
+                  )}
+                </>
+              )}
+
+            </div>
+          )}
+
         </div>
+      )}
+
+      {/* Custom Relationship Builder Modal */}
+      {activeSheet && (
+        <CustomRelationshipModal
+          isOpen={isCustomModalOpen}
+          onClose={() => setIsCustomModalOpen(false)}
+          activeSheet={activeSheet}
+          onAddCustomScenario={handleAddCustomScenario}
+        />
+      )}
+
+      {/* Detailed AI Insights Modal */}
+      {activeSheet && scenarioForDetailModal.length > 0 && (
+        <DetailedInsightsModal
+          isOpen={isDetailedModalOpen}
+          onClose={() => {
+            setIsDetailedModalOpen(false);
+            setScenarioForDetailModal([]);
+          }}
+          selectedScenarios={scenarioForDetailModal}
+          activeSheet={activeSheet}
+          onOpenInPivot={handleOpenInPivot}
+        />
       )}
 
     </div>
   );
 }
+

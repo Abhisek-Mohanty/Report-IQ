@@ -94,3 +94,43 @@ export interface DatasetStats {
   completenessScore: number; // 0 - 100
   nullSummaries: NullValueSummary[];
 }
+
+export interface AiScenario {
+  id: string;
+  title: string;
+  category: "relationship" | "category" | "trend" | "anomaly" | string;
+  columns: string[];
+  analysisType: "group_comparison" | "distribution" | "time_series" | "outlier_detection" | "duplicate_check" | "correlation" | "missing_data" | string;
+  method: "groupby-aggregate" | "IQR" | "time-aggregation" | "duplicate-check" | "pearson" | "spearman" | "z-score" | "chi-square" | string;
+  suggestedChart: "bar" | "pie" | "line" | "box" | "scatter" | "area" | "doughnut" | string;
+  businessQuestion: string;
+  whyItMatters: string;
+  confidence: "high" | "medium" | "low" | string;
+  confidenceReason: string;
+  isCustom?: boolean;
+}
+
+export interface AiPatternAnalysisResponse {
+  datasetSummary: string;
+  scenarios: AiScenario[];
+}
+
+export interface DetailedInsightResult {
+  scenarioId: string;
+  scenarioTitle: string;
+  category: string;
+  analysisType: string;
+  columns: string[];
+  chartType: string;
+  chartData: any[];
+  chartXKey?: string;
+  chartYKey?: string;
+  businessQuestion: string;
+  whyItMatters: string;
+  summary: string;
+  keyMetrics: { label: string; value: string | number; badge?: string }[];
+  narrativeParagraphs: string[];
+  actionableRecommendations: string[];
+  outlierRows?: Record<string, any>[];
+  statsTable?: { label: string; value: string | number }[];
+}

@@ -36,7 +36,7 @@ CREATE TABLE `DataSets` (
   `createdAt` datetime NOT NULL,
   `updatedAt` datetime NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB
+) ENGINE=InnoDB AUTO_INCREMENT=0
 DEFAULT CHARSET=latin1;
 
 
@@ -56,7 +56,7 @@ CREATE TABLE `ActivityLogs` (
   `createdAt` datetime NOT NULL,
   `updatedAt` datetime NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB
+) ENGINE=InnoDB AUTO_INCREMENT=0
 DEFAULT CHARSET=latin1;
 
 
@@ -70,7 +70,7 @@ CREATE TABLE `Conversations` (
   `createdAt` datetime NOT NULL,
   `updatedAt` datetime NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB
+) ENGINE=InnoDB AUTO_INCREMENT=0
 DEFAULT CHARSET=latin1;
 
 CREATE TABLE `TokenLimits` (
@@ -82,5 +82,5 @@ CREATE TABLE `TokenLimits` (
   `updatedBy` int(11) DEFAULT NULL,
   `updatedAt` datetime NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB
+) ENGINE=InnoDB AUTO_INCREMENT=0
 DEFAULT CHARSET=latin1;

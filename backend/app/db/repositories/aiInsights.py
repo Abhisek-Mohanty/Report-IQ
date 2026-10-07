@@ -62,12 +62,16 @@ class AiInsightsRepository(BaseRepository):
             gemini = GEMINI_AI()
             oResponse = await gemini.gemini_response(prompt=prompt,operation_instruction=system_instruction)
             print("\n\n\n\n\n\n\n",oResponse)
+            response_text = oResponse.text
 
             oAcitvityLog = ActivityLog(
                     dataSetId = oDataSet.id,
                     conversationId = oConversation.id,
                     promptType = PROMPT_TYPE.PREDEFINED.value,
-                    response=json.dumps(oResponse),
+                    promptToken=oResponse.usage_metadata.prompt_token_count,
+                    completionToken=oResponse.usage_metadata.candidates_token_count,
+                    totalTokens=oResponse.usage_metadata.total_token_count,
+                    response=response_text,
                     createdBy = user.id, 
                     updatedBy = user.id, 
                     createdAt = now, 
@@ -75,8 +79,9 @@ class AiInsightsRepository(BaseRepository):
             )
             self.save(oAcitvityLog)
             self.db_session.commit()
+            response_json = json.loads(response_text)
             return SendSuccessResponse(
-                        data = oResponse
+                        data = response_json
                     )
     
 
