@@ -25,3 +25,17 @@ async def save_user(
     return SendResponse(
         data = oResult
     ).send()
+
+@router.post("/detailedAnalysis", 
+    response_model = SendResponse, 
+    name = "member:save-user")
+async def save_user(
+    current_user : User = Depends(get_current_user_authorizer()),
+    payload = Body(...),
+    oRepository: AiInsightsRepository = Depends(get_repository(AiInsightsRepository)),
+) -> SendResponse:
+    oResult = await oRepository.getDetailedAnalyis( user = current_user, payload = payload)
+    
+    return SendResponse(
+        data = oResult
+    ).send()

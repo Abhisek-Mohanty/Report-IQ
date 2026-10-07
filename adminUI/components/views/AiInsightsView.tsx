@@ -164,10 +164,47 @@ export function AiInsightsView() {
       toast.error("Please select at least one relationship scenario.");
       return;
     }
+    getDetailedAIAnalysis(selected)
     console.log(selectedDatasetId);
+    console.log(selected);
     setScenarioForDetailModal(selected);
     setIsDetailedModalOpen(true);
   };
+
+  async function getDetailedAIAnalysis(selectedScenario:[]) {
+    try {
+      setIsAnalyzing(true);
+      const payload = {
+        ...activeSheet,
+        rows: exampleRows(activeSheet && activeSheet.rows ? activeSheet.rows : []),
+        selectedScenario: [...selectedScenario]
+      };        
+      const response = await api.post("/aiInsights/detailedAnalysis", payload);
+      const resData = response.data?.data || response.data;
+      console.log(response);
+      console.log(resData);
+
+      
+      // const summary = resData?.datasetSummary || "Dataset column relationship analysis generated successfully.";
+      // const incomingScenarios: AiScenario[] = Array.isArray(resData?.scenarios) ? resData.scenarios : [];
+
+      // setDatasetSummary(summary);
+      // setScenarios(incomingScenarios);
+      
+      // if (incomingScenarios.length > 0) {
+      //   setSelectedScenarioIds(new Set([incomingScenarios[0].id]));
+      // }
+
+      // setActiveTabMode("relationships");
+      // toast.success(`AI Pattern Engine discovered ${incomingScenarios.length} relationships!`);
+    } catch (error: any) {
+      console.error('Error fetching AI insights:', error);
+      toast.error(error?.response?.data?.detail || "Could not reach AI backend. Loading sample scenarios...");
+      // loadSampleScenarios();
+    } finally {
+      // setIsAnalyzing(false);
+    }
+  }
 
   // Transfer scenario dimensions into the Pivot Table Studio
   const handleOpenInPivot = (scenario: AiScenario) => {

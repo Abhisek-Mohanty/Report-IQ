@@ -22,8 +22,6 @@ export function Navbar() {
   if (profile?.picture) {
       setPicture(profile['picture']);
 } }}, []);
-console.log(picture);
-
   const theme = useAnalyticsStore((state) => state.theme);
   const toggleTheme = useAnalyticsStore((state) => state.toggleTheme);
   const datasets = useAnalyticsStore((state) => state.datasets);
