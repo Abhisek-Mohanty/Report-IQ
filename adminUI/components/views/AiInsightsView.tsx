@@ -3,29 +3,29 @@ import { useAnalyticsStore } from "@/store/useAnalyticsStore";
 import { analyzeDataset, exampleRows } from "@/utils/dataOperations";
 import { toast } from "@/components/ui/toast";
 import api from "@/lib/axios";
-import { 
-  Brain, 
-  Sparkles, 
-  AlertTriangle, 
-  CheckCircle2, 
-  ArrowRight, 
-  Table, 
-  FileSpreadsheet, 
-  Layers, 
-  Lightbulb, 
-  SlidersHorizontal, 
-  Download, 
-  Copy, 
-  ChevronRight, 
-  Info, 
-  TrendingUp, 
-  BarChart3, 
-  Database, 
-  Filter, 
-  ShieldAlert, 
-  ShieldCheck, 
-  Activity, 
-  RefreshCw, 
+import {
+  Brain,
+  Sparkles,
+  AlertTriangle,
+  CheckCircle2,
+  ArrowRight,
+  Table,
+  FileSpreadsheet,
+  Layers,
+  Lightbulb,
+  SlidersHorizontal,
+  Download,
+  Copy,
+  ChevronRight,
+  Info,
+  TrendingUp,
+  BarChart3,
+  Database,
+  Filter,
+  ShieldAlert,
+  ShieldCheck,
+  Activity,
+  RefreshCw,
   FileText,
   Check,
   Zap,
@@ -193,11 +193,16 @@ export function AiInsightsView() {
         ? activeDataset.name.replace(/\.[^/.]+$/, "")
         : (activeSheet?.name || "Dataset");
 
-      const payload = prepareDetailedAnalysisPayload(
+      const analysisPayload = prepareDetailedAnalysisPayload(
         datasetName,
         activeSheet,
         targetScenarios
       );
+
+      const payload = {
+        ...analysisPayload,
+        summary: columnProfiles,
+      };
 
       console.log("Detailed AI Analysis Payload:", payload);
 
@@ -211,8 +216,8 @@ export function AiInsightsView() {
       console.error("Error fetching AI insights:", error);
       toast.error(
         error?.response?.data?.detail ||
-          error?.response?.data?.message ||
-          "Could not reach AI backend. See console for prepared payload."
+        error?.response?.data?.message ||
+        "Could not reach AI backend. See console for prepared payload."
       );
     } finally {
       setIsAnalyzing(false);
@@ -358,16 +363,16 @@ export function AiInsightsView() {
       const payload = {
         ...activeSheet,
         rows: exampleRows(activeSheet && activeSheet.rows ? activeSheet.rows : [])
-      };        
+      };
       const response = await api.post("/aiInsights/trendAnalysis", payload);
       const resData = response.data?.data || response.data;
-      
+
       const summary = resData?.datasetSummary || "Dataset column relationship analysis generated successfully.";
       const incomingScenarios: AiScenario[] = Array.isArray(resData?.scenarios) ? resData.scenarios : [];
 
       setDatasetSummary(summary);
       setScenarios(incomingScenarios);
-      
+
       if (incomingScenarios.length > 0) {
         setSelectedScenarioIds(new Set([incomingScenarios[0].id]));
       }
@@ -522,8 +527,8 @@ export function AiInsightsView() {
     const hasColDimension = colField && colField !== "none";
     const rawColKeys = hasColDimension
       ? Array.from(
-          new Set(rows.map((r) => (r[colField] !== null && r[colField] !== undefined && r[colField] !== "" ? String(r[colField]) : "(Blank)")))
-        ).sort()
+        new Set(rows.map((r) => (r[colField] !== null && r[colField] !== undefined && r[colField] !== "" ? String(r[colField]) : "(Blank)")))
+      ).sort()
       : ["(Total)"];
 
     // Limit to top 15 column categories for horizontal table fit
@@ -655,7 +660,7 @@ export function AiInsightsView() {
 
       const ws = XLSX.utils.json_to_sheet(exportRows);
       XLSX.utils.book_append_sheet(wb, ws, "Pivot_Summary");
-      
+
       const fileName = `${activeSheet.name}_Pivot_${aggFunc}.xlsx`;
       XLSX.writeFile(wb, fileName);
       toast.success(`Exported Pivot table as ${fileName}`);
@@ -732,7 +737,7 @@ export function AiInsightsView() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-y-auto gap-6 pb-6">
-      
+
       {/* Top Header & Workspace Navigator */}
       <div className="flex flex-wrap items-center justify-between gap-4 shrink-0">
         <div>
@@ -792,11 +797,11 @@ export function AiInsightsView() {
       {/* ========================================================================= */}
       {isLowQuality ? (
         <div className="flex flex-col gap-6">
-          
+
           {/* Prominent Action Alert Card with Direct Redirect to CleaningView */}
           <div className="rounded-2xl border-2 border-amber-500/40 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent p-6 shadow-md relative overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-              
+
               <div className="flex items-start gap-4">
                 <div className="h-14 w-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-500 flex items-center justify-center shrink-0 shadow-sm">
                   <ShieldAlert className="h-7 w-7 animate-pulse" />
@@ -968,8 +973,8 @@ export function AiInsightsView() {
                             {col.type === "number"
                               ? "Impute with Mean or Median in Cleaning"
                               : col.missingPercentage > 50
-                              ? "Consider dropping empty column"
-                              : "Impute with Mode or custom label"}
+                                ? "Consider dropping empty column"
+                                : "Impute with Mode or custom label"}
                           </span>
                         </td>
                       </tr>
@@ -994,7 +999,7 @@ export function AiInsightsView() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
+
               {/* Tip 1 */}
               <div className="p-4 rounded-xl border border-border bg-accent/20 space-y-2">
                 <div className="flex items-center gap-2">
@@ -1083,11 +1088,11 @@ export function AiInsightsView() {
         /* BRANCH 2: HIGH QUALITY (>= 90% COMPLETENESS SCORE)                        */
         /* ========================================================================= */
         <div className="flex flex-col gap-6">
-          
+
           {/* Quality Certification Banner */}
           <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent p-6 shadow-sm">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              
+
               <div className="flex items-start gap-4">
                 <div className="h-14 w-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-500 flex items-center justify-center shrink-0 shadow-sm">
                   <ShieldCheck className="h-7 w-7" />
@@ -1130,40 +1135,36 @@ export function AiInsightsView() {
             <div className="flex items-center gap-2 mt-6 pt-4 border-t border-emerald-500/20 overflow-x-auto">
               <button
                 onClick={() => setActiveTabMode("relationships")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                  activeTabMode === "relationships"
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTabMode === "relationships"
                     ? "bg-violet-600 text-white shadow-sm shadow-violet-600/20"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                }`}
+                  }`}
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 <span>AI Column Relationships</span>
                 {scenarios.length > 0 && (
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                    activeTabMode === "relationships" ? "bg-white/20 text-white" : "bg-violet-500/20 text-violet-500"
-                  }`}>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${activeTabMode === "relationships" ? "bg-white/20 text-white" : "bg-violet-500/20 text-violet-500"
+                    }`}>
                     {scenarios.length}
                   </span>
                 )}
               </button>
               <button
                 onClick={() => setActiveTabMode("pivot")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                  activeTabMode === "pivot"
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTabMode === "pivot"
                     ? "bg-emerald-600 text-white shadow-sm"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                }`}
+                  }`}
               >
                 <Grid3X3 className="h-3.5 w-3.5" />
                 <span>Pivot Table Summary Matrix</span>
               </button>
               <button
                 onClick={() => setActiveTabMode("profile")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                  activeTabMode === "profile"
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTabMode === "profile"
                     ? "bg-primary text-white shadow-sm"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                }`}
+                  }`}
               >
                 <Activity className="h-3.5 w-3.5" />
                 <span>Data Health & Column Profiler</span>
@@ -1174,7 +1175,7 @@ export function AiInsightsView() {
           {/* VIEW MODE 1: DATA PROFILE OF UPLOADED DATA */}
           {activeTabMode === "profile" && (
             <div className="flex flex-col gap-6">
-              
+
               {/* Overview Metrics Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
@@ -1273,11 +1274,10 @@ export function AiInsightsView() {
                             </td>
                             <td className="py-3 px-4">
                               <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-mono uppercase border ${
-                                  col.type === "number"
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-mono uppercase border ${col.type === "number"
                                     ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
                                     : "bg-purple-500/10 text-purple-500 border-purple-500/20"
-                                }`}
+                                  }`}
                               >
                                 {col.type}
                               </span>
@@ -1329,7 +1329,7 @@ export function AiInsightsView() {
           {/* VIEW MODE 2: INTERACTIVE PIVOT TABLE SUMMARY STUDIO */}
           {activeTabMode === "pivot" && (
             <div className="flex flex-col gap-6">
-              
+
               {/* Configuration Controls Bar */}
               <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-border pb-3">
@@ -1339,7 +1339,7 @@ export function AiInsightsView() {
                       Pivot Table Aggregator Controls
                     </h4>
                   </div>
-                  
+
                   {/* Action Buttons */}
                   <div className="flex items-center gap-2">
                     <Button
@@ -1365,7 +1365,7 @@ export function AiInsightsView() {
 
                 {/* 4 Dimension & Value Dropdowns */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
-                  
+
                   {/* 1. Row Dimension */}
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
@@ -1652,11 +1652,10 @@ export function AiInsightsView() {
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => setColumnFilter(null)}
-                          className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                            columnFilter === null
+                          className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${columnFilter === null
                               ? "bg-primary text-white shadow-sm"
                               : "bg-accent/60 text-foreground hover:bg-accent"
-                          }`}
+                            }`}
                         >
                           All Columns ({scenarios.length})
                         </button>
@@ -1666,16 +1665,14 @@ export function AiInsightsView() {
                             <button
                               key={colName}
                               onClick={() => setColumnFilter(isActive ? null : colName)}
-                              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                                isActive
+                              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${isActive
                                   ? "bg-violet-600 text-white shadow-sm"
                                   : "bg-accent/60 text-foreground hover:bg-accent"
-                              }`}
+                                }`}
                             >
                               <span>{colName}</span>
-                              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                                isActive ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
-                              }`}>
+                              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${isActive ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                                }`}>
                                 {count}
                               </span>
                             </button>
@@ -1703,11 +1700,10 @@ export function AiInsightsView() {
                             <button
                               key={cat.id}
                               onClick={() => setCategoryFilter(cat.id)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                                isActive
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${isActive
                                   ? "bg-primary text-white shadow-sm"
                                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                              }`}
+                                }`}
                             >
                               <span>{cat.label}</span>
                               <span className="opacity-70 font-mono text-[10px]">({cat.count})</span>
@@ -1789,11 +1785,10 @@ export function AiInsightsView() {
                         <div
                           key={sc.id}
                           onClick={() => handleToggleScenarioSelect(sc.id)}
-                          className={`rounded-xl border p-5 transition-all duration-200 cursor-pointer flex flex-col justify-between relative group ${
-                            isSelected
+                          className={`rounded-xl border p-5 transition-all duration-200 cursor-pointer flex flex-col justify-between relative group ${isSelected
                               ? "bg-card border-violet-500/80 ring-2 ring-violet-500/20 shadow-md"
                               : "bg-card border-border hover:border-violet-500/40 hover:shadow-sm"
-                          }`}
+                            }`}
                         >
                           {/* Top Row: Checkbox, Category, Confidence */}
                           <div>
@@ -1802,11 +1797,10 @@ export function AiInsightsView() {
                                 <button
                                   type="button"
                                   onClick={(e) => handleToggleScenarioSelect(sc.id, e)}
-                                  className={`h-5 w-5 rounded flex items-center justify-center transition-colors border ${
-                                    isSelected
+                                  className={`h-5 w-5 rounded flex items-center justify-center transition-colors border ${isSelected
                                       ? "bg-violet-600 border-violet-600 text-white"
                                       : "border-border bg-accent/40 hover:border-primary text-transparent"
-                                  }`}
+                                    }`}
                                 >
                                   <Check className="h-3.5 w-3.5 stroke-[3]" />
                                 </button>
@@ -1821,9 +1815,8 @@ export function AiInsightsView() {
                               </div>
 
                               <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono">
-                                <span className={`h-2 w-2 rounded-full ${
-                                  sc.confidence === "high" ? "bg-emerald-500" : sc.confidence === "medium" ? "bg-amber-500" : "bg-slate-400"
-                                }`} />
+                                <span className={`h-2 w-2 rounded-full ${sc.confidence === "high" ? "bg-emerald-500" : sc.confidence === "medium" ? "bg-amber-500" : "bg-slate-400"
+                                  }`} />
                                 <span className="capitalize">{sc.confidence}</span>
                               </div>
                             </div>

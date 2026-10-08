@@ -15,7 +15,7 @@ export function mergeDatasets(
     // Append rows (Union)
     // Merge headers from both sheets
     const headers = Array.from(new Set([...sheetA.headers, ...sheetB.headers]));
-    
+
     // Combine rows and ensure missing keys are padded with null
     const rows = [...sheetA.rows, ...sheetB.rows].map((row) => {
       const newRow: Record<string, any> = {};
@@ -56,7 +56,7 @@ export function mergeDatasets(
   const getHeaderName = (header: string, isSheetB: boolean) => {
     if (header === keyAStr && !isSheetB) return keyAStr;
     if (header === keyBStr && isSheetB) return keyAStr; // Merge keys under the keyA name
-    
+
     if (overlappingHeaders.includes(header)) {
       return `${header}_${isSheetB ? "B" : "A"}`;
     }
@@ -102,36 +102,36 @@ export function mergeDatasets(
       matchedBKeys.add(keyValA);
       matchingBRows.forEach((rowB) => {
         const mergedRow: Record<string, any> = {};
-        
+
         // Add A values
         sheetA.headers.forEach((h) => {
           mergedRow[getHeaderName(h, false)] = rowA[h];
         });
-        
+
         // Add B values
         sheetB.headers.forEach((h) => {
           if (h === keyBStr) return;
           mergedRow[getHeaderName(h, true)] = rowB[h];
         });
-        
+
         mergedRows.push(mergedRow);
       });
     } else {
       // No match in B
       if (joinType === "left" || joinType === "full") {
         const mergedRow: Record<string, any> = {};
-        
+
         // Add A values
         sheetA.headers.forEach((h) => {
           mergedRow[getHeaderName(h, false)] = rowA[h];
         });
-        
+
         // Pad B values with null
         sheetB.headers.forEach((h) => {
           if (h === keyBStr) return;
           mergedRow[getHeaderName(h, true)] = null;
         });
-        
+
         mergedRows.push(mergedRow);
       }
     }
@@ -141,12 +141,12 @@ export function mergeDatasets(
   if (joinType === "right" || joinType === "full") {
     sheetB.rows.forEach((rowB) => {
       const keyValB = String(rowB[keyBStr] ?? "");
-      
+
       // If A has not matched this B key
       const keyExistsInA = sheetA.rows.some((rowA) => String(rowA[keyAStr] ?? "") === keyValB);
       if (!keyExistsInA) {
         const mergedRow: Record<string, any> = {};
-        
+
         // Pad A values with null (except key, which gets B's key value)
         sheetA.headers.forEach((h) => {
           const name = getHeaderName(h, false);
@@ -156,13 +156,13 @@ export function mergeDatasets(
             mergedRow[name] = null;
           }
         });
-        
+
         // Add B values
         sheetB.headers.forEach((h) => {
           if (h === keyBStr) return;
           mergedRow[getHeaderName(h, true)] = rowB[h];
         });
-        
+
         mergedRows.push(mergedRow);
       }
     });
@@ -230,7 +230,7 @@ export function splitDatasetByPercentage(sheet: SheetData, percentage: number): 
 
 export function splitDatasetByColumnValue(sheet: SheetData, column: string): SheetData[] {
   const groups: Record<string, Record<string, any>[]> = {};
-  
+
   sheet.rows.forEach((row) => {
     const val = String(row[column] ?? "NULL");
     if (!groups[val]) groups[val] = [];
@@ -258,7 +258,7 @@ export function splitDatasetByColumnValue(sheet: SheetData, column: string): She
 export function analyzeDataset(sheet: SheetData): DatasetStats {
   const totalRows = sheet.rows.length;
   const totalCols = sheet.headers.length;
-  
+
   if (totalRows === 0) {
     return {
       totalRows: 0,
@@ -274,7 +274,7 @@ export function analyzeDataset(sheet: SheetData): DatasetStats {
   const rowStrings = new Set<string>();
   let duplicateCount = 0;
   let emptyRowsCount = 0;
-  
+
   sheet.rows.forEach((row) => {
     // Check if row is completely empty
     const isEmpty = Object.values(row).every((v) => v === null || v === undefined || v === "");
@@ -297,7 +297,7 @@ export function analyzeDataset(sheet: SheetData): DatasetStats {
 
   sheet.headers.forEach((header) => {
     let missingCount = 0;
-    
+
     sheet.rows.forEach((row) => {
       const v = row[header];
       if (v === null || v === undefined || v === "") {
@@ -306,7 +306,7 @@ export function analyzeDataset(sheet: SheetData): DatasetStats {
     });
 
     missingCells += missingCount;
-    
+
     nullSummaries.push({
       columnName: header,
       missingCount,
@@ -339,7 +339,7 @@ export function replaceNullValues(
 ): SheetData {
   const rows = [...sheet.rows];
   const type = sheet.columnTypes[column];
-  
+
   // Extract non-null values
   const nonNulls = rows
     .map((r) => r[column])
@@ -447,7 +447,7 @@ export function cleanFindReplace(
   const updatedRows = sheet.rows.map((row) => {
     const val = row[column];
     if (val === null || val === undefined) return row;
-    
+
     const valStr = String(val);
     if (valStr.includes(findStr)) {
       const nextStr = valStr.replaceAll(findStr, replaceStr);
@@ -456,7 +456,7 @@ export function cleanFindReplace(
       const isNum = !isNaN(nextNum) && nextStr.trim() !== "";
       return { ...row, [column]: isNum ? nextNum : nextStr };
     }
-    
+
     return row;
   });
 
@@ -537,7 +537,7 @@ export function cleanRenameColumn(sheet: SheetData, oldName: string, newName: st
   if (!name || name === oldName || sheet.headers.includes(name)) return sheet;
 
   const headers = sheet.headers.map((h) => (h === oldName ? name : h));
-  
+
   const columnTypes = { ...sheet.columnTypes };
   columnTypes[name] = columnTypes[oldName];
   delete columnTypes[oldName];
@@ -661,7 +661,7 @@ export function evaluateGroup(row: Record<string, any>, group: FilterGroup): boo
 
 export function filterDataset(sheet: SheetData, group: FilterGroup): SheetData {
   const rows = sheet.rows.filter((row) => evaluateGroup(row, group));
-  
+
   return {
     ...sheet,
     rows,
@@ -670,24 +670,24 @@ export function filterDataset(sheet: SheetData, group: FilterGroup): SheetData {
 }
 
 
-export function exampleRows(arr:any){
-    const length = arr.length;
+export function exampleRows(arr: any) {
+  const length = arr.length;
 
-    // If less than 5, return all data
-    if (length < 5) {
-        return arr;
-    }
+  // If less than 5, return all data
+  if (length < 5) {
+    return arr;
+  }
 
-    // If greater than 100, take 10 random items
-    if (length > 100) {
-        return getRandomItems(arr, 10);
-    }
+  // If greater than 100, take 10 random items
+  if (length > 100) {
+    return getRandomItems(arr, 10);
+  }
 
-    return getRandomItems(arr, 5);
+  return getRandomItems(arr, 5);
 
-function getRandomItems(arr:[], count) {
+  function getRandomItems(arr: [], count) {
     const shuffled = [...arr].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, count);
-}
+  }
 
 }
