@@ -431,3 +431,221 @@ function formatNumber(num: number): string {
   }
   return Number.isInteger(num) ? num.toLocaleString() : num.toFixed(2);
 }
+
+export function toPascalCase(str: string): string {
+  if (!str) return "";
+  return str
+    .split(/[\s_\-]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join("");
+}
+
+export function toPlural(word: string): string {
+  if (!word) return "";
+  if (/(?:s|x|z|ch|sh)$/i.test(word)) {
+    return `${word}es`;
+  }
+  if (/[^aeiou]y$/i.test(word)) {
+    return `${word.slice(0, -1)}ies`;
+  }
+  return `${word}s`;
+}
+
+function roundSmart(n: number): number {
+  if (isNaN(n)) return 0;
+  if (Number.isInteger(n)) return n;
+  if (Math.abs(n) >= 10) return Math.round(n);
+  return Number(n.toFixed(2));
+}
+
+export function computeScenarioAnalysisResult(sheet: SheetData, scenario: AiScenario): any {
+  const rows = sheet.rows || [];
+  const totalRows = sheet.rowCount || rows.length;
+  const col1 = scenario.columns[0] || sheet.headers[0];
+  const col2 = scenario.columns[1] || null;
+
+  const isColNumeric = (col: string | null): boolean => {
+    if (!col) return false;
+    if (sheet.columnTypes?.[col] === "number") return true;
+    let nonNull = 0;
+    let numericCount = 0;
+    for (const r of rows.slice(0, 50)) {
+      const v = r[col];
+      if (v !== null && v !== undefined && v !== "") {
+        nonNull++;
+        if (!isNaN(Number(v))) numericCount++;
+      }
+    }
+    return nonNull > 0 && numericCount === nonNull;
+  };
+
+  const normAnalysisType = (scenario.analysisType || "").toLowerCase();
+
+  // 1. Categorical Distribution (e.g. Status distribution)
+  const isDistribution =
+    normAnalysisType.includes("distribution") ||
+    (!col2 && !isColNumeric(col1)) ||
+    (col1 && col2 && !isColNumeric(col1) && !isColNumeric(col2) && normAnalysisType.includes("distribution"));
+
+  if (isDistribution || (!col2 && !isColNumeric(col1))) {
+    const categoryCol = col1;
+    const freqMap: Record<string, number> = {};
+
+    rows.forEach((r) => {
+      const v = r[categoryCol];
+      if (v !== null && v !== undefined && v !== "") {
+        const s = String(v).trim();
+        freqMap[s] = (freqMap[s] || 0) + 1;
+      }
+    });
+
+    const uniqueCount = Object.keys(freqMap).length;
+    const cleanCat = toPascalCase(categoryCol);
+    const pluralCat = toPlural(cleanCat);
+
+    const overall: Record<string, any> = {
+      rowCount: totalRows,
+      [`unique${pluralCat}`]: uniqueCount,
+    };
+
+    const sortedFreq = Object.entries(freqMap).sort((a, b) => b[1] - a[1]);
+
+    const groups = sortedFreq.map(([catName, count]) => ({
+      [categoryCol]: catName,
+      count,
+      percentage: totalRows > 0 ? Number(((count / totalRows) * 100).toFixed(2)) : 0,
+    }));
+
+    return {
+      scenarioId: scenario.id,
+      overall,
+      groups,
+    };
+  }
+
+  // 2. Group Comparison / Relational Breakdown (e.g. Service Amount by Branch)
+  let categoryCol = col1;
+  let numericCol = col2;
+
+  if (col2 && isColNumeric(col1) && !isColNumeric(col2)) {
+    numericCol = col1;
+    categoryCol = col2;
+  } else if (!col2 && isColNumeric(col1)) {
+    numericCol = col1;
+    categoryCol = null;
+  }
+
+  if (numericCol && isColNumeric(numericCol)) {
+    const validNumbers: number[] = [];
+    rows.forEach((r) => {
+      const v = r[numericCol];
+      if (v !== null && v !== undefined && v !== "") {
+        const num = Number(v);
+        if (!isNaN(num)) validNumbers.push(num);
+      }
+    });
+
+    const totalSum = validNumbers.reduce((a, b) => a + b, 0);
+    const avgVal = validNumbers.length > 0 ? totalSum / validNumbers.length : 0;
+    const sortedNums = [...validNumbers].sort((a, b) => a - b);
+    let medianVal = 0;
+    if (sortedNums.length > 0) {
+      const mid = Math.floor(sortedNums.length / 2);
+      medianVal = sortedNums.length % 2 !== 0 ? sortedNums[mid] : (sortedNums[mid - 1] + sortedNums[mid]) / 2;
+    }
+
+    const cleanCol = toPascalCase(numericCol);
+    const overall: Record<string, any> = {
+      rowCount: totalRows,
+      [`total${cleanCol}`]: roundSmart(totalSum),
+      [`average${cleanCol}`]: roundSmart(avgVal),
+      [`median${cleanCol}`]: roundSmart(medianVal),
+    };
+
+    if (categoryCol) {
+      const groupBuckets: Record<string, { count: number; sum: number }> = {};
+      rows.forEach((r) => {
+        const rawG = r[categoryCol];
+        if (rawG !== null && rawG !== undefined && rawG !== "") {
+          const gName = String(rawG).trim();
+          if (!groupBuckets[gName]) {
+            groupBuckets[gName] = { count: 0, sum: 0 };
+          }
+          groupBuckets[gName].count += 1;
+          const num = Number(r[numericCol]);
+          if (!isNaN(num)) {
+            groupBuckets[gName].sum += num;
+          }
+        }
+      });
+
+      const sortedGroups = Object.entries(groupBuckets).sort((a, b) => b[1].sum - a[1].sum);
+
+      const groups = sortedGroups.map(([gName, data]) => ({
+        [categoryCol]: gName,
+        count: data.count,
+        sum: roundSmart(data.sum),
+        average: data.count > 0 ? roundSmart(data.sum / data.count) : 0,
+      }));
+
+      const highest = sortedGroups.length > 0 ? {
+        group: sortedGroups[0][0],
+        value: roundSmart(sortedGroups[0][1].sum),
+      } : undefined;
+
+      const lowest = sortedGroups.length > 0 ? {
+        group: sortedGroups[sortedGroups.length - 1][0],
+        value: roundSmart(sortedGroups[sortedGroups.length - 1][1].sum),
+      } : undefined;
+
+      return {
+        scenarioId: scenario.id,
+        overall,
+        groups,
+        ...(highest ? { highest } : {}),
+        ...(lowest ? { lowest } : {}),
+      };
+    } else {
+      // Single numeric column
+      return {
+        scenarioId: scenario.id,
+        overall,
+        groups: [],
+      };
+    }
+  }
+
+  // Fallback
+  return {
+    scenarioId: scenario.id,
+    overall: { rowCount: totalRows },
+    groups: [],
+  };
+}
+
+export function prepareDetailedAnalysisPayload(
+  datasetName: string,
+  sheet: SheetData,
+  selectedScenarios: AiScenario[]
+) {
+  return {
+    dataset: {
+      name: datasetName,
+      rowCount: sheet.rowCount || sheet.rows?.length || 0,
+      columnCount: sheet.columnCount || sheet.headers?.length || 0,
+    },
+    selectedScenarios: selectedScenarios.map((sc) => ({
+      id: sc.id,
+      title: sc.title,
+      category: sc.category,
+      analysisType: sc.analysisType,
+      method: sc.method,
+      suggestedChart: sc.suggestedChart,
+      columns: sc.columns,
+      businessQuestion: sc.businessQuestion,
+    })),
+    analysisResults: selectedScenarios.map((sc) => computeScenarioAnalysisResult(sheet, sc)),
+  };
+}
+

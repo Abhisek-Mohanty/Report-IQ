@@ -101,6 +101,29 @@ class AiInsightsRepository(BaseRepository):
                 return SendErrorResponse(
                         message = "Don't receive any data"
                     ).send()
+
+            prompt = AI_INSIGHTS_DATASET_PATTERN_USER_PROMPT.format(PAYLOAD=payload)
+            system_instruction = AI_INSIGHTS_DATASET_PATTERN_SYSTEM_INSTRUCTION 
+            gemini = GEMINI_AI()
+            oResponse = await gemini.gemini_response(prompt=prompt,operation_instruction=system_instruction)
+            print("\n\n\n\n\n\n\n",oResponse)
+            response_text = oResponse.text
+
+            oAcitvityLog = ActivityLog(
+                    dataSetId = oDataSet.id,
+                    conversationId = oConversation.id,
+                    promptType = PROMPT_TYPE.PREDEFINED.value,
+                    promptToken=oResponse.usage_metadata.prompt_token_count,
+                    completionToken=oResponse.usage_metadata.candidates_token_count,
+                    totalTokens=oResponse.usage_metadata.total_token_count,
+                    response=response_text,
+                    createdBy = user.id, 
+                    updatedBy = user.id, 
+                    createdAt = now, 
+                    updatedAt = now,
+            )
+            self.save(oAcitvityLog)
+            self.db_session.commit()
             return SendSuccessResponse(
                     data = []
                 )

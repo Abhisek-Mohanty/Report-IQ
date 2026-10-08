@@ -42,6 +42,7 @@ import * as XLSX from "xlsx";
 import { AiScenario } from "@/types";
 import { CustomRelationshipModal } from "./CustomRelationshipModal";
 import { DetailedInsightsModal } from "./DetailedInsightsModal";
+import { prepareDetailedAnalysisPayload } from "@/utils/scenarioAnalyzer";
 
 type AggFunction = "sum" | "avg" | "count" | "min" | "max";
 
@@ -155,6 +156,7 @@ export function AiInsightsView() {
   const handleInspectSingleScenario = (scenario: AiScenario) => {
     setScenarioForDetailModal([scenario]);
     setIsDetailedModalOpen(true);
+    getDetailedAIAnalysis([scenario]);
   };
 
   // Launch multiple selected scenarios detailed inspection
@@ -164,45 +166,56 @@ export function AiInsightsView() {
       toast.error("Please select at least one relationship scenario.");
       return;
     }
-    getDetailedAIAnalysis(selected)
-    console.log(selectedDatasetId);
-    console.log(selected);
     setScenarioForDetailModal(selected);
-    setIsDetailedModalOpen(true);
+    // setIsDetailedModalOpen(true);
+    getDetailedAIAnalysis(selected);
   };
 
-  async function getDetailedAIAnalysis(selectedScenario:[]) {
+  async function getDetailedAIAnalysis(selectedScenariosList?: AiScenario[]) {
+    if (!activeSheet) {
+      toast.error("No active sheet selected.");
+      return;
+    }
+
+    const targetScenarios =
+      selectedScenariosList && selectedScenariosList.length > 0
+        ? selectedScenariosList
+        : scenarios.filter((s) => selectedScenarioIds.has(s.id));
+
+    if (targetScenarios.length === 0) {
+      toast.error("Please select at least one relationship scenario.");
+      return;
+    }
+
     try {
       setIsAnalyzing(true);
-      const payload = {
-        ...activeSheet,
-        rows: exampleRows(activeSheet && activeSheet.rows ? activeSheet.rows : []),
-        selectedScenario: [...selectedScenario]
-      };        
+      const datasetName = activeDataset?.name
+        ? activeDataset.name.replace(/\.[^/.]+$/, "")
+        : (activeSheet?.name || "Dataset");
+
+      const payload = prepareDetailedAnalysisPayload(
+        datasetName,
+        activeSheet,
+        targetScenarios
+      );
+
+      console.log("Detailed AI Analysis Payload:", payload);
+
       const response = await api.post("/aiInsights/detailedAnalysis", payload);
       const resData = response.data?.data || response.data;
-      console.log(response);
-      console.log(resData);
+      console.log("Detailed AI Analysis Response:", resData);
 
-      
-      // const summary = resData?.datasetSummary || "Dataset column relationship analysis generated successfully.";
-      // const incomingScenarios: AiScenario[] = Array.isArray(resData?.scenarios) ? resData.scenarios : [];
-
-      // setDatasetSummary(summary);
-      // setScenarios(incomingScenarios);
-      
-      // if (incomingScenarios.length > 0) {
-      //   setSelectedScenarioIds(new Set([incomingScenarios[0].id]));
-      // }
-
-      // setActiveTabMode("relationships");
-      // toast.success(`AI Pattern Engine discovered ${incomingScenarios.length} relationships!`);
+      toast.success(`Detailed AI insights prepared for ${targetScenarios.length} scenarios!`);
+      return resData;
     } catch (error: any) {
-      console.error('Error fetching AI insights:', error);
-      toast.error(error?.response?.data?.detail || "Could not reach AI backend. Loading sample scenarios...");
-      // loadSampleScenarios();
+      console.error("Error fetching AI insights:", error);
+      toast.error(
+        error?.response?.data?.detail ||
+          error?.response?.data?.message ||
+          "Could not reach AI backend. See console for prepared payload."
+      );
     } finally {
-      // setIsAnalyzing(false);
+      setIsAnalyzing(false);
     }
   }
 
