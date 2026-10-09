@@ -1136,8 +1136,8 @@ export function AiInsightsView() {
               <button
                 onClick={() => setActiveTabMode("relationships")}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTabMode === "relationships"
-                    ? "bg-violet-600 text-white shadow-sm shadow-violet-600/20"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ? "bg-violet-600 text-white shadow-sm shadow-violet-600/20"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
                   }`}
               >
                 <Sparkles className="h-3.5 w-3.5" />
@@ -1152,8 +1152,8 @@ export function AiInsightsView() {
               <button
                 onClick={() => setActiveTabMode("pivot")}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTabMode === "pivot"
-                    ? "bg-emerald-600 text-white shadow-sm"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
                   }`}
               >
                 <Grid3X3 className="h-3.5 w-3.5" />
@@ -1162,8 +1162,8 @@ export function AiInsightsView() {
               <button
                 onClick={() => setActiveTabMode("profile")}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTabMode === "profile"
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
                   }`}
               >
                 <Activity className="h-3.5 w-3.5" />
@@ -1275,8 +1275,8 @@ export function AiInsightsView() {
                             <td className="py-3 px-4">
                               <span
                                 className={`px-2 py-0.5 rounded-full text-[10px] font-mono uppercase border ${col.type === "number"
-                                    ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                                    : "bg-purple-500/10 text-purple-500 border-purple-500/20"
+                                  ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                                  : "bg-purple-500/10 text-purple-500 border-purple-500/20"
                                   }`}
                               >
                                 {col.type}
@@ -1653,8 +1653,8 @@ export function AiInsightsView() {
                         <button
                           onClick={() => setColumnFilter(null)}
                           className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${columnFilter === null
-                              ? "bg-primary text-white shadow-sm"
-                              : "bg-accent/60 text-foreground hover:bg-accent"
+                            ? "bg-primary text-white shadow-sm"
+                            : "bg-accent/60 text-foreground hover:bg-accent"
                             }`}
                         >
                           All Columns ({scenarios.length})
@@ -1666,8 +1666,8 @@ export function AiInsightsView() {
                               key={colName}
                               onClick={() => setColumnFilter(isActive ? null : colName)}
                               className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${isActive
-                                  ? "bg-violet-600 text-white shadow-sm"
-                                  : "bg-accent/60 text-foreground hover:bg-accent"
+                                ? "bg-violet-600 text-white shadow-sm"
+                                : "bg-accent/60 text-foreground hover:bg-accent"
                                 }`}
                             >
                               <span>{colName}</span>
@@ -1701,8 +1701,8 @@ export function AiInsightsView() {
                               key={cat.id}
                               onClick={() => setCategoryFilter(cat.id)}
                               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${isActive
-                                  ? "bg-primary text-white shadow-sm"
-                                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                ? "bg-primary text-white shadow-sm"
+                                : "text-muted-foreground hover:bg-accent hover:text-foreground"
                                 }`}
                             >
                               <span>{cat.label}</span>
@@ -1786,8 +1786,8 @@ export function AiInsightsView() {
                           key={sc.id}
                           onClick={() => handleToggleScenarioSelect(sc.id)}
                           className={`rounded-xl border p-5 transition-all duration-200 cursor-pointer flex flex-col justify-between relative group ${isSelected
-                              ? "bg-card border-violet-500/80 ring-2 ring-violet-500/20 shadow-md"
-                              : "bg-card border-border hover:border-violet-500/40 hover:shadow-sm"
+                            ? "bg-card border-violet-500/80 ring-2 ring-violet-500/20 shadow-md"
+                            : "bg-card border-border hover:border-violet-500/40 hover:shadow-sm"
                             }`}
                         >
                           {/* Top Row: Checkbox, Category, Confidence */}
@@ -1798,8 +1798,8 @@ export function AiInsightsView() {
                                   type="button"
                                   onClick={(e) => handleToggleScenarioSelect(sc.id, e)}
                                   className={`h-5 w-5 rounded flex items-center justify-center transition-colors border ${isSelected
-                                      ? "bg-violet-600 border-violet-600 text-white"
-                                      : "border-border bg-accent/40 hover:border-primary text-transparent"
+                                    ? "bg-violet-600 border-violet-600 text-white"
+                                    : "border-border bg-accent/40 hover:border-primary text-transparent"
                                     }`}
                                 >
                                   <Check className="h-3.5 w-3.5 stroke-[3]" />
