@@ -525,8 +525,8 @@ export function computeScenarioAnalysisResult(sheet: SheetData, scenario: AiScen
   }
 
   // 2. Group Comparison / Relational Breakdown (e.g. Service Amount by Branch)
-  let categoryCol = col1;
-  let numericCol = col2;
+  let categoryCol: string | null = col1;
+  let numericCol: string | null = col2;
 
   if (col2 && isColNumeric(col1) && !isColNumeric(col2)) {
     numericCol = col1;

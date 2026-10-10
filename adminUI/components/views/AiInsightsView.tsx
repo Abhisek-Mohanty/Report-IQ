@@ -43,6 +43,10 @@ import { AiScenario } from "@/types";
 import { CustomRelationshipModal } from "./CustomRelationshipModal";
 import { DetailedInsightsModal } from "./DetailedInsightsModal";
 import { prepareDetailedAnalysisPayload } from "@/utils/scenarioAnalyzer";
+import { AnalysisDashboardView } from "./AnalysisDashboardView";
+import { AnalysisDashboardData } from "@/types/dashboard";
+import { SAMPLE_ANALYSIS_DASHBOARD } from "@/utils/sampleReportData";
+import { EXAMPLE_LOAN_PORTFOLIO_PAYLOAD } from "@/utils/jsonPointerResolver";
 
 type AggFunction = "sum" | "avg" | "count" | "min" | "max";
 
@@ -70,8 +74,116 @@ export function AiInsightsView() {
     return analyzeDataset(activeSheet);
   }, [activeSheet]);
 
-  // View state for High Quality mode: "relationships" vs "pivot" vs "profile"
-  const [activeTabMode, setActiveTabMode] = useState<"profile" | "pivot" | "relationships">("relationships");
+  // Detailed statistics for each column (for High Quality Profile view & payload preparation)
+  const columnProfiles = useMemo(() => {
+    if (!activeSheet) return [];
+
+    return activeSheet.headers.map((header) => {
+      const type = activeSheet.columnTypes[header] || "string";
+      const total = activeSheet.rows.length;
+      let nonNullCount = 0;
+
+      if (type === "number") {
+        const nums: number[] = [];
+        activeSheet.rows.forEach((r) => {
+          const val = r[header];
+          if (val !== null && val !== undefined && val !== "") {
+            const num = Number(val);
+            if (!isNaN(num)) {
+              nums.push(num);
+              nonNullCount++;
+            }
+          }
+        });
+
+        const sum = nums.reduce((a, b) => a + b, 0);
+        const mean = nums.length > 0 ? sum / nums.length : 0;
+        const sorted = [...nums].sort((a, b) => a - b);
+        const min = sorted.length > 0 ? sorted[0] : 0;
+        const max = sorted.length > 0 ? sorted[sorted.length - 1] : 0;
+        const mid = Math.floor(sorted.length / 2);
+        const median = sorted.length === 0 ? 0 : sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+
+        return {
+          header,
+          type,
+          nonNullCount,
+          completeness: total > 0 ? ((nonNullCount / total) * 100).toFixed(1) : "0",
+          stats: { min, max, mean, median, sum },
+        };
+      } else {
+        const valueCounts: Record<string, number> = {};
+        activeSheet.rows.forEach((r) => {
+          const val = r[header];
+          if (val !== null && val !== undefined && val !== "") {
+            nonNullCount++;
+            const s = String(val);
+            valueCounts[s] = (valueCounts[s] || 0) + 1;
+          }
+        });
+
+        const uniqueCount = Object.keys(valueCounts).length;
+        let topVal = "None";
+        let topValCount = 0;
+        Object.entries(valueCounts).forEach(([k, count]) => {
+          if (count > topValCount) {
+            topVal = k;
+            topValCount = count;
+          }
+        });
+
+        return {
+          header,
+          type,
+          nonNullCount,
+          completeness: total > 0 ? ((nonNullCount / total) * 100).toFixed(1) : "0",
+          stats: {
+            uniqueCount,
+            topVal,
+            topValCount,
+            topValPercent: total > 0 ? ((topValCount / total) * 100).toFixed(1) : "0",
+          },
+        };
+      }
+    });
+  }, [activeSheet]);
+
+  // View state for High Quality mode: "relationships" vs "pivot" vs "profile" vs "dashboard"
+  const [activeTabMode, setActiveTabMode] = useState<"profile" | "pivot" | "relationships" | "dashboard">("relationships");
+
+  // Sheet-specific report store: key is `${activeDataset?.id || 'none'}:${activeSheet?.name || 'none'}`
+  const currentSheetKey = useMemo(() => {
+    return `${activeDataset?.id || "none"}:${activeSheet?.name || "none"}`;
+  }, [activeDataset, activeSheet]);
+
+  const [reportsBySheet, setReportsBySheet] = useState<
+    Record<
+      string,
+      {
+        report: AnalysisDashboardData;
+        payload: any;
+        createdAt: number;
+      }
+    >
+  >({});
+  const [dashboardLoading, setDashboardLoading] = useState<boolean>(false);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+
+  const currentReportEntry = reportsBySheet[currentSheetKey] || null;
+
+  const handleLoadSampleDashboard = () => {
+    setReportsBySheet((prev) => ({
+      ...prev,
+      [currentSheetKey]: {
+        report: SAMPLE_ANALYSIS_DASHBOARD,
+        payload: EXAMPLE_LOAN_PORTFOLIO_PAYLOAD,
+        createdAt: Date.now(),
+      },
+    }));
+    setDashboardError(null);
+    setActiveTabMode("dashboard");
+    toast.success("Loaded Loan Portfolio Executive BI Dashboard!");
+  };
 
   // Pivot Table configuration state
   const [rowField, setRowField] = useState<string>("");
@@ -154,8 +266,6 @@ export function AiInsightsView() {
 
   // Launch single scenario detailed inspection
   const handleInspectSingleScenario = (scenario: AiScenario) => {
-    setScenarioForDetailModal([scenario]);
-    setIsDetailedModalOpen(true);
     getDetailedAIAnalysis([scenario]);
   };
 
@@ -166,8 +276,6 @@ export function AiInsightsView() {
       toast.error("Please select at least one relationship scenario.");
       return;
     }
-    setScenarioForDetailModal(selected);
-    // setIsDetailedModalOpen(true);
     getDetailedAIAnalysis(selected);
   };
 
@@ -189,6 +297,10 @@ export function AiInsightsView() {
 
     try {
       setIsAnalyzing(true);
+      setDashboardLoading(true);
+      setDashboardError(null);
+      setActiveTabMode("dashboard");
+
       const datasetName = activeDataset?.name
         ? activeDataset.name.replace(/\.[^/.]+$/, "")
         : (activeSheet?.name || "Dataset");
@@ -210,17 +322,28 @@ export function AiInsightsView() {
       const resData = response.data?.data || response.data;
       console.log("Detailed AI Analysis Response:", resData);
 
+      setReportsBySheet((prev) => ({
+        ...prev,
+        [currentSheetKey]: {
+          report: resData,
+          payload,
+          createdAt: Date.now(),
+        },
+      }));
+
       toast.success(`Detailed AI insights prepared for ${targetScenarios.length} scenarios!`);
       return resData;
     } catch (error: any) {
       console.error("Error fetching AI insights:", error);
-      toast.error(
+      const msg =
         error?.response?.data?.detail ||
         error?.response?.data?.message ||
-        "Could not reach AI backend. See console for prepared payload."
-      );
+        "Could not reach AI backend. You can preview the sample executive dashboard.";
+      setDashboardError(msg);
+      toast.error(msg);
     } finally {
       setIsAnalyzing(false);
+      setDashboardLoading(false);
     }
   }
 
@@ -434,80 +557,6 @@ export function AiInsightsView() {
       .filter((s) => s.missingCount > 0)
       .sort((a, b) => b.missingPercentage - a.missingPercentage);
   }, [stats]);
-
-  // Detailed statistics for each column (for High Quality Profile view)
-  const columnProfiles = useMemo(() => {
-    if (!activeSheet) return [];
-
-    return activeSheet.headers.map((header) => {
-      const type = activeSheet.columnTypes[header] || "string";
-      const total = activeSheet.rows.length;
-      let nonNullCount = 0;
-
-      if (type === "number") {
-        const nums: number[] = [];
-        activeSheet.rows.forEach((r) => {
-          const val = r[header];
-          if (val !== null && val !== undefined && val !== "") {
-            const num = Number(val);
-            if (!isNaN(num)) {
-              nums.push(num);
-              nonNullCount++;
-            }
-          }
-        });
-
-        const sum = nums.reduce((a, b) => a + b, 0);
-        const mean = nums.length > 0 ? sum / nums.length : 0;
-        const sorted = [...nums].sort((a, b) => a - b);
-        const min = sorted.length > 0 ? sorted[0] : 0;
-        const max = sorted.length > 0 ? sorted[sorted.length - 1] : 0;
-        const mid = Math.floor(sorted.length / 2);
-        const median = sorted.length === 0 ? 0 : sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-
-        return {
-          header,
-          type,
-          nonNullCount,
-          completeness: total > 0 ? ((nonNullCount / total) * 100).toFixed(1) : "0",
-          stats: { min, max, mean, median, sum },
-        };
-      } else {
-        const valueCounts: Record<string, number> = {};
-        activeSheet.rows.forEach((r) => {
-          const val = r[header];
-          if (val !== null && val !== undefined && val !== "") {
-            nonNullCount++;
-            const s = String(val);
-            valueCounts[s] = (valueCounts[s] || 0) + 1;
-          }
-        });
-
-        const uniqueCount = Object.keys(valueCounts).length;
-        let topVal = "None";
-        let topValCount = 0;
-        Object.entries(valueCounts).forEach(([k, count]) => {
-          if (count > topValCount) {
-            topVal = k;
-            topValCount = count;
-          }
-        });
-
-        return {
-          header,
-          type,
-          nonNullCount,
-          completeness: total > 0 ? ((nonNullCount / total) * 100).toFixed(1) : "0",
-          stats: {
-            uniqueCount,
-            topVal,
-            topValCount,
-            topValPercent: total > 0 ? ((topValCount / total) * 100).toFixed(1) : "0",
-          },
-        };
-      }
-    });
-  }, [activeSheet]);
 
   // Pivot Table Computation
   const pivotData = useMemo(() => {
@@ -1150,6 +1199,19 @@ export function AiInsightsView() {
                 )}
               </button>
               <button
+                onClick={() => setActiveTabMode("dashboard")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTabMode === "dashboard"
+                  ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/20"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  }`}
+              >
+                <BarChart3 className="h-3.5 w-3.5 text-indigo-400" />
+                <span>Executive Dashboard</span>
+                {currentReportEntry && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                )}
+              </button>
+              <button
                 onClick={() => setActiveTabMode("pivot")}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTabMode === "pivot"
                   ? "bg-emerald-600 text-white shadow-sm"
@@ -1169,6 +1231,17 @@ export function AiInsightsView() {
                 <Activity className="h-3.5 w-3.5" />
                 <span>Data Health & Column Profiler</span>
               </button>
+
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={handleLoadSampleDashboard}
+                  className="text-xs px-2.5 py-1 rounded-md border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-700 flex items-center gap-1.5 transition-colors shrink-0"
+                  title="Load the sample Loan Portfolio Executive BI Dashboard"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Sample Dashboard</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1308,9 +1381,9 @@ export function AiInsightsView() {
                                 </div>
                               ) : "uniqueCount" in col.stats ? (
                                 <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-muted-foreground">
-                                  <span>Unique: <strong className="text-foreground">{col.stats.uniqueCount.toLocaleString()}</strong></span>
+                                  <span>Unique: <strong className="text-foreground">{col.stats.uniqueCount?.toLocaleString() ?? "N/A"}</strong></span>
                                   <span>
-                                    Mode: <strong className="text-foreground">"{col.stats.topVal.substring(0, 15)}"</strong> ({col.stats.topValPercent}%)
+                                    Mode: <strong className="text-foreground">"{col.stats.topVal ? col.stats.topVal.substring(0, 15) : "None"}"</strong> ({col.stats.topValPercent ?? 0}%)
                                   </span>
                                 </div>
                               ) : null}
@@ -1905,6 +1978,20 @@ export function AiInsightsView() {
               )}
 
             </div>
+          )}
+
+          {/* VIEW MODE 4: FULL-PAGE SCHEMA-DRIVEN EXECUTIVE DASHBOARD */}
+          {activeTabMode === "dashboard" && (
+            <AnalysisDashboardView
+              report={currentReportEntry?.report || null}
+              payload={currentReportEntry?.payload || EXAMPLE_LOAN_PORTFOLIO_PAYLOAD}
+              activeSheet={activeSheet}
+              activeDatasetName={activeDataset?.name || "Dataset"}
+              isLoading={dashboardLoading}
+              error={dashboardError}
+              onBack={() => setActiveTabMode("relationships")}
+              onLoadSample={handleLoadSampleDashboard}
+            />
           )}
 
         </div>

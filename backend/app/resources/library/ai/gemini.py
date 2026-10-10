@@ -22,7 +22,7 @@ class GEMINI_AI:
                         contents=prompt,
                         config=types.GenerateContentConfig(
                             system_instruction=SYSTEM_INSTRUCTIONS + "\n\n"+ operation_instruction,
-                            temperature=0.2,
+                            temperature=0.7,
                             max_output_tokens=16000,
                         )
                     )

@@ -685,7 +685,7 @@ export function exampleRows(arr: any) {
 
   return getRandomItems(arr, 5);
 
-  function getRandomItems(arr: [], count) {
+  function getRandomItems(arr: any[], count: number) {
     const shuffled = [...arr].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, count);
   }
