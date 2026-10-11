@@ -16,7 +16,8 @@ import {
   MessageSquareCode, 
   SearchCode, 
   FileHeart, 
-  Activity
+  Activity,
+  MonitorCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   
   // AI Insights placeholders
   { id: "ai-insights", name: "AI Insights", icon: Brain, category: "ai", requiresAuth: true },
+  { id: "ai-validator", name: "AI Validator", icon: MonitorCheck, category: "ai", requiresAuth: true },
   { id: "ai-chat", name: "AI Copilot Chat", icon: MessageSquareCode, category: "ai", requiresAuth: true },
   { id: "ai-query", name: "AI Query Agent", icon: SearchCode, category: "ai", requiresAuth: true },
   { id: "ai-report", name: "AI Report Builder", icon: FileHeart, category: "ai", requiresAuth: true },

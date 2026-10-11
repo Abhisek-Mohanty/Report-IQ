@@ -53,6 +53,20 @@ export default function WorkspacePage() {
       // AI Placeholders
       case "ai-insights":
         return <AiInsightsView/>;
+      
+      case "ai-validator":
+        return (
+          <ComingSoonView
+            title="AI Validator"
+            description="Validate directly with your CSV and Excel datasets. Ask questions like 'Which product category had the highest gross margin in Q3?' and watch it compute pivots and filters in real-time."
+            features={[
+              "Natural Language to JS Data-Grid Queries",
+              "Interactive Table Summarization",
+              "Local Context Injection (RAG on your cells)",
+              "Automated Code Snippet Generation",
+            ]}
+          />
+        );
 
       case "ai-chat":
         return (
