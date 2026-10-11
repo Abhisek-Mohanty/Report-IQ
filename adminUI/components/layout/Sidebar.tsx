@@ -40,7 +40,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: "merge", name: "Merge Tool", icon: GitMerge, category: "prep", requiresAuth: false },
   { id: "split", name: "Split Tool", icon: Scissors, category: "prep", requiresAuth: false },
   { id: "cleaning", name: "Data Cleaning", icon: FileSpreadsheet, category: "prep", requiresAuth: false },
-  { id: "manual-checks", name: "Create a Check", icon: CheckSquare, category: "prep", requiresAuth: false },
+  { id: "manual-checks", name: "Data Validator", icon: CheckSquare, category: "prep", requiresAuth: false },
   { id: "query", name: "Query Builder", icon: Filter, category: "prep", requiresAuth: false },
   { id: "visualizations", name: "Visualizations", icon: BarChart3, category: "prep", requiresAuth: false },
   { id: "export", name: "Export Report", icon: Download, category: "prep", requiresAuth: false },
