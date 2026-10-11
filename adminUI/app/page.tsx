@@ -13,11 +13,13 @@ import { DatasetsView } from "@/components/views/DatasetsView";
 import { MergeView } from "@/components/views/MergeView";
 import { SplitView } from "@/components/views/SplitView";
 import { CleaningView } from "@/components/views/CleaningView";
+import { ManualChecksView } from "@/components/views/ManualChecksView";
 import { VisualizationsView } from "@/components/views/VisualizationsView";
 import { QueryBuilderView } from "@/components/views/QueryBuilderView";
 import { ExportView } from "@/components/views/ExportView";
 import { ComingSoonView } from "@/components/views/ComingSoonView";
 import { AiInsightsView } from "@/components/views/AiInsightsView";
+import { AiValidatorView } from "@/components/views/AiValidatorView";
 
 export default function WorkspacePage() {
   const activeTab = useAnalyticsStore((state) => state.activeTab);
@@ -43,6 +45,8 @@ export default function WorkspacePage() {
         return <SplitView />;
       case "cleaning":
         return <CleaningView />;
+      case "manual-checks":
+        return <ManualChecksView />;
       case "query":
         return <QueryBuilderView />;
       case "visualizations":
@@ -55,18 +59,7 @@ export default function WorkspacePage() {
         return <AiInsightsView/>;
       
       case "ai-validator":
-        return (
-          <ComingSoonView
-            title="AI Validator"
-            description="Validate directly with your CSV and Excel datasets. Ask questions like 'Which product category had the highest gross margin in Q3?' and watch it compute pivots and filters in real-time."
-            features={[
-              "Natural Language to JS Data-Grid Queries",
-              "Interactive Table Summarization",
-              "Local Context Injection (RAG on your cells)",
-              "Automated Code Snippet Generation",
-            ]}
-          />
-        );
+        return <AiValidatorView />;
 
       case "ai-chat":
         return (

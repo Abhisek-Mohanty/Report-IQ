@@ -17,7 +17,8 @@ import {
   SearchCode, 
   FileHeart, 
   Activity,
-  MonitorCheck
+  MonitorCheck,
+  CheckSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,13 +40,14 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: "merge", name: "Merge Tool", icon: GitMerge, category: "prep", requiresAuth: false },
   { id: "split", name: "Split Tool", icon: Scissors, category: "prep", requiresAuth: false },
   { id: "cleaning", name: "Data Cleaning", icon: FileSpreadsheet, category: "prep", requiresAuth: false },
+  { id: "manual-checks", name: "Create a Check", icon: CheckSquare, category: "prep", requiresAuth: false },
   { id: "query", name: "Query Builder", icon: Filter, category: "prep", requiresAuth: false },
   { id: "visualizations", name: "Visualizations", icon: BarChart3, category: "prep", requiresAuth: false },
   { id: "export", name: "Export Report", icon: Download, category: "prep", requiresAuth: false },
   
   // AI Insights placeholders
   { id: "ai-insights", name: "AI Insights", icon: Brain, category: "ai", requiresAuth: true },
-  { id: "ai-validator", name: "AI Validator", icon: MonitorCheck, category: "ai", requiresAuth: true },
+  { id: "ai-validator", name: "AI Report Validator", icon: MonitorCheck, category: "ai", requiresAuth: false },
   { id: "ai-chat", name: "AI Copilot Chat", icon: MessageSquareCode, category: "ai", requiresAuth: true },
   { id: "ai-query", name: "AI Query Agent", icon: SearchCode, category: "ai", requiresAuth: true },
   { id: "ai-report", name: "AI Report Builder", icon: FileHeart, category: "ai", requiresAuth: true },
@@ -69,7 +71,7 @@ export function Sidebar() {
           {items.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
-            const isDataRequired = ["datasets", "merge", "split", "cleaning", "query", "visualizations", "export"].includes(item.id);
+            const isDataRequired = ["datasets", "merge", "split", "cleaning", "manual-checks", "query", "visualizations", "export"].includes(item.id);
             const isDisabled = isDataRequired && datasets.length === 0;
 
             return (
