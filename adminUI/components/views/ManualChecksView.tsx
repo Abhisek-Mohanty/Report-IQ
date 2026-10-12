@@ -20,6 +20,7 @@ import {
   UploadCloud,
   Database,
   Plus,
+  Table,
   Trash2,
   SlidersHorizontal,
   Search,
@@ -399,10 +400,40 @@ export function ManualChecksView() {
 
   return (
     <div className="w-full space-y-8 pb-20 animate-in fade-in duration-200">
+      <div className="flex flex-wrap items-center justify-between gap-4 shrink-0">
+        <h2 className="font-display font-bold text-2xl text-foreground flex items-center gap-2">
+          <Sparkles className="h-6 w-6 text-primary" />
+          <span>Data Validator (Rule Checks & Formulas)</span>
+        </h2>
+        <div className="flex items-center gap-2 pt-2 lg:pt-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveTab("ai-validator")}
+              className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+              <span>AI Report Validator</span>
+              <ArrowRight className="w-3 h-3 text-slate-500" />
+            </Button>
+          </div>
+        
+        {/* active status indicators */}
+        <div className="flex gap-2 text-xs font-semibold">
+          <div className="px-2.5 py-1 bg-accent border border-border rounded-lg text-muted-foreground flex items-center gap-1.5">
+            <Database className="h-3.5 w-3.5" />
+            <span className="text-foreground">{activeDataset.name}</span>
+          </div>
+          <div className="px-2.5 py-1 bg-accent border border-border rounded-lg text-muted-foreground flex items-center gap-1.5">
+            <Table className="h-3.5 w-3.5" />
+            <span className="text-foreground">{activeSheet.name}</span>
+          </div>
+        </div>
+      </div>
       {/* =========================================================================
           TOP BANNER: SCOPE & OVERVIEW
          ========================================================================= */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+      {/* <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-48 bg-gradient-to-bl from-emerald-500/10 via-teal-500/5 to-transparent pointer-events-none" />
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -413,7 +444,6 @@ export function ManualChecksView() {
                 Data Prep & Visuals Module
               </span>
 
-              {/* Dataset & Sheet Switcher */}
               <div className="flex items-center gap-1.5 bg-slate-800/90 px-3 py-1 rounded-lg border border-slate-700 text-xs text-slate-300">
                 <Database className="w-3.5 h-3.5 text-slate-400" />
                 <span>Dataset:</span>
@@ -465,7 +495,7 @@ export function ManualChecksView() {
             </Button>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* =========================================================================
           RULES SUITE MANAGER
