@@ -188,6 +188,7 @@ export function AiValidatorView() {
     });
 
     setRefPreparedPayload(payload);
+    console.log(refPreparedPayload);
     toast.success("Request prepared successfully! Ready for AI validation pipeline.");
   };
 
@@ -339,7 +340,7 @@ export function AiValidatorView() {
   }
 
   return (
-    <div className="w-full space-y-8 pb-20 animate-in fade-in duration-200">
+    <div className="w-full space-y-8 pb-20 animate-in fade-in duration-200 overflow-y-auto">
       {/* =========================================================================
           TOP BANNER: SCOPE & OVERVIEW
          ========================================================================= */}
