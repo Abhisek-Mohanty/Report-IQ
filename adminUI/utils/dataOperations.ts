@@ -178,6 +178,80 @@ export function mergeDatasets(
   };
 }
 
+export interface MultiMergeSource {
+  sheet: SheetData;
+  name?: string;
+  leftKey?: string;
+  rightKey?: string;
+  joinType?: JoinType;
+}
+
+export function mergeMultipleDatasets(
+  sources: MultiMergeSource[],
+  globalJoinType: JoinType = "left"
+): SheetData {
+  if (sources.length < 2) {
+    throw new Error("At least two sources are required to perform a merge");
+  }
+
+  // 1. Append Mode: stack all rows vertically with union of headers
+  if (globalJoinType === "append") {
+    const allHeaders: string[] = [];
+    const headerSet = new Set<string>();
+    const columnTypes: Record<string, ColumnType> = {};
+
+    sources.forEach((s) => {
+      s.sheet.headers.forEach((h) => {
+        if (!headerSet.has(h)) {
+          headerSet.add(h);
+          allHeaders.push(h);
+        }
+        if (!columnTypes[h]) {
+          columnTypes[h] = s.sheet.columnTypes[h] || "string";
+        }
+      });
+    });
+
+    const allRows: Record<string, any>[] = [];
+    sources.forEach((s) => {
+      s.sheet.rows.forEach((row) => {
+        const newRow: Record<string, any> = {};
+        allHeaders.forEach((h) => {
+          newRow[h] = row[h] !== undefined ? row[h] : null;
+        });
+        allRows.push(newRow);
+      });
+    });
+
+    return {
+      name: `Append_${sources.map((s) => s.name || s.sheet.name).join("_")}`,
+      headers: allHeaders,
+      rows: allRows,
+      rowCount: allRows.length,
+      columnCount: allHeaders.length,
+      columnTypes,
+    };
+  }
+
+  // 2. Sequential Join Mode
+  let currentSheet = sources[0].sheet;
+
+  for (let i = 1; i < sources.length; i++) {
+    const src = sources[i];
+    const jt = src.joinType || globalJoinType;
+    const leftKey = src.leftKey;
+    const rightKey = src.rightKey;
+
+    if (!leftKey || !rightKey) {
+      throw new Error(`Join keys must be specified for Table ${i + 1} (${src.name || src.sheet.name})`);
+    }
+
+    currentSheet = mergeDatasets(currentSheet, src.sheet, jt, leftKey, rightKey);
+  }
+
+  return currentSheet;
+}
+
 // ==========================================
 // 2. SPLIT ALGORITHMS
 // ==========================================
