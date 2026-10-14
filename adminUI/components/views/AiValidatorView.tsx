@@ -6,6 +6,7 @@ import { SheetData, Dataset } from "@/types";
 import { parseExcelFile, parseCsvFile } from "@/utils/excelParser";
 import { formatBytes } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
+import api from "@/lib/axios";
 import {
   ReferenceExcelScope,
   ReferenceExcelPayload,
@@ -155,7 +156,7 @@ export function AiValidatorView() {
   };
 
   // Build Reference Excel Payload
-  const handlePrepareRefPayload = () => {
+  async function handlePrepareRefPayload(){
     if (!activeDataset || !activeSheet) {
       toast.error("No active dataset selected.");
       return;
@@ -164,6 +165,8 @@ export function AiValidatorView() {
       toast.error("Please upload and select a reference spreadsheet.");
       return;
     }
+
+    try {
 
     const scope: ReferenceExcelScope = {
       sheetName: activeRefSheet.name,
@@ -175,6 +178,8 @@ export function AiValidatorView() {
       filterOperator: "contains",
       filterValue: refFilterVal,
     };
+
+
 
     const payload = buildReferenceExcelPayload({
       activeDatasetId: activeDataset.id,
@@ -189,7 +194,15 @@ export function AiValidatorView() {
 
     setRefPreparedPayload(payload);
     console.log(refPreparedPayload);
+    const response = await api.post("/aiValidator/reference_sheet_validate", payload);
+    const resData = response.data?.data || response.data;
+      console.log("Detailed AI Analysis Response:", resData);
     toast.success("Request prepared successfully! Ready for AI validation pipeline.");
+    } catch (error: any) {
+          console.error('Error fetching AI Validation:', error);
+          toast.error(error?.response?.data?.detail || "Could not reach AI backend. Loading sample scenarios...");
+        } finally {
+        }
   };
 
   // =========================================================================

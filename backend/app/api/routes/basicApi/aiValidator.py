@@ -7,20 +7,20 @@ from app.api.dependencies.database import get_repository
 from app.core import config
 from app.models.domain.users import User
 from app.resources.helper.common import *
-from app.db.repositories.aiInsights import AiInsightsRepository
+from app.db.repositories.aiValidator import AiValidatorRepository
 
 router = APIRouter()
 
 
-@router.post("/Analysis", 
+@router.post("/reference_sheet_validate", 
     response_model = SendResponse, 
     name = "member:save-user")
 async def save_user(
     current_user : User = Depends(get_current_user_authorizer()),
     payload = Body(...),
-    oRepository: AiInsightsRepository = Depends(get_repository(AiInsightsRepository)),
+    oRepository: AiValidatorRepository = Depends(get_repository(AiValidatorRepository)),
 ) -> SendResponse:
-    oResult = await oRepository.getTrendAnalyis( user = current_user, payload = payload)
+    oResult = await oRepository.getValidationExcel( user = current_user, payload = payload)
     
     return SendResponse(
         data = oResult

@@ -269,3 +269,28 @@ Confirm:
 
 Return only the final JSON.
 """
+
+
+
+REFERENCE_EXCEL_VALIDATOR_USER_PROMPT = """
+Prepare a reference Excel comparison plan for ReportIQ.
+
+USER REQUEST:
+{USER_REQUEST}
+
+Follow the system instruction and return only JSON matching its schema.
+Use only the supplied columns and evidence.
+Ask minimal clarification questions when necessary.
+Do not execute validation or claim full-dataset results.
+
+INPUT DATA:
+{PAYLOAD}
+"""
+
+DEFAULT_VALIDATION_REQUEST = """
+Inspect the selected columns in both spreadsheets.
+Suggest suitable record-matching keys and corresponding columns.
+Propose supported value comparisons and reference-membership checks.
+Do not assume business meanings, currency, rate scales, or tolerances.
+If the purpose is unclear, ask what the user wants checked.
+"""

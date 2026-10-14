@@ -7,7 +7,7 @@ from sqlalchemy.orm import load_only, contains_eager, joinedload
 import re
 
 from app.api.response.http_response import SendErrorResponse, SendExportResponse, SendSuccessResponse
-from app.prompt.aiValidator import REFERENCE_EXCEL_VALIDATOR_SYSTEM_PROMPT
+from app.prompt.aiValidator import REFERENCE_EXCEL_VALIDATOR_SYSTEM_PROMPT, DEFAULT_VALIDATION_REQUEST, REFERENCE_EXCEL_VALIDATOR_USER_PROMPT
 
 from app.resources.helper.common import *
 from app.db.repositories.base import BaseRepository
@@ -32,6 +32,18 @@ class AiValidatorRepository(BaseRepository):
 
             now = Moment().now
             # prompt = DETAILED_ANALYSIS_DATASET_PATTERN_USER_PROMT.format(PAYLOAD=payload)
+
+            user_request = (payload.get("userPrompt") or "").strip() or DEFAULT_VALIDATION_REQUEST.strip()
+
+            # Keep the request consistent inside the payload.
+            prepared_payload = {**payload,"userPrompt": user_request,}
+
+            prompt = REFERENCE_EXCEL_VALIDATOR_USER_PROMPT.replace("{USER_REQUEST}", user_request).replace("{PAYLOAD}",json.dumps(
+                                                                                                                prepared_payload,
+                                                                                                                ensure_ascii=False,
+                                                                                                                allow_nan=False,
+                                                                                                            ),
+                                                                                                        )
             print("\n\n\n\n\n\n\n","prompt",prompt)
             system_instruction = REFERENCE_EXCEL_VALIDATOR_SYSTEM_PROMPT 
             gemini = GEMINI_AI()
@@ -57,7 +69,7 @@ class AiValidatorRepository(BaseRepository):
             response_json = json.loads(oResponse.text)
             
             return SendSuccessResponse(
-                        data = []
+                        data = response_json
                     )
     
 
