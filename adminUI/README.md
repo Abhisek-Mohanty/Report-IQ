@@ -55,4 +55,11 @@ http://localhost:3000
 *   **Data Quality & Cleaning**: Profiles columns for missing cell counts. Features tools to replace null values with Mean, Median, Mode, or custom text. Includes string converters, find & replace, and duplicate/empty rows removal.
 *   **Query Builder**: Simple, powerful boolean builder matching compound queries (conjunctions: AND/OR) across multiple columns instantly.
 *   **Visualizations Panel**: Integrates Recharts to render Bar, Line, Pie, Doughnut, Area, and Scatter plots. Supports SVG & PNG vector image exports.
-*   **Export Center**: Compiles and downloads cleaned sheets as Excel files, CSV arrays, or structured PDF Executive Reports (including tables, stats metadata, and file summaries).
+*   **Universal Export & Report Hub**: Converts and downloads cleaned sheets into 27 industry-standard formats entirely client-side with interactive live previews before download:
+    *   **Spreadsheets**: Excel Workbook (`.xlsx`), Legacy Excel (`.xls`), Excel Binary (`.xlsb`), OpenDocument (`.ods`)
+    *   **Documents**: Executive PDF (`.pdf`), Microsoft Word (`.docx`), Standalone HTML (`.html`)
+    *   **Flat Delimited**: CSV (`.csv`), TSV (`.tsv`), ASCII Boxed Plain Text (`.txt`)
+    *   **Data & Code**: JSON (`.json`), JSON Lines (`.jsonl`), XML (`.xml`), YAML (`.yaml`), Markdown (`.md`), LaTeX Table (`.tex`)
+    *   **Databases & SQL**: Dialect-Aware SQL Scripts (`.sql`), Binary SQLite 3 Database (`.sqlite`)
+    *   **Big Data & Columnar**: Apache Parquet (`.parquet`), Apache Arrow (`.arrow`), Feather (`.feather`), Apache Avro (`.avro`), Apache ORC (`.orc`)
+    *   **Images**: High-DPI PNG (`.png`), JPEG (`.jpg`), Scalable Vector SVG (`.svg`), Modern WebP (`.webp`)

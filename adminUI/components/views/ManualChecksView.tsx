@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useAnalyticsStore } from "@/store/useAnalyticsStore";
 import { SheetData, Dataset } from "@/types";
 import { toast } from "@/components/ui/toast";
@@ -12,7 +12,6 @@ import {
 } from "@/types/validator";
 import {
   compileFormula,
-  evaluateRuleOnRow,
   executeValidationSuite,
 } from "@/utils/validatorFormulaEngine";
 import {
@@ -33,187 +32,225 @@ import {
   Layers,
   Sparkles,
   ArrowRight,
+  HelpCircle,
+  BookOpen,
+  GraduationCap,
+  XCircle,
+  AlertTriangle,
+  Lightbulb,
+  FileSpreadsheet,
+  Check,
+  X,
+  Square,
+  Info,
+  Calendar,
+  Hash,
+  Type
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
+import * as XLSX from "xlsx";
+
+interface MultiDatasetEvaluationResult extends RuleEvaluationResult {
+  datasetName: string;
+  datasetId: string;
+  sheetName: string;
+}
+
+interface DatasetValidationReport {
+  datasetId: string;
+  datasetName: string;
+  sheetName: string;
+  totalRows: number;
+  totalEvaluations: number;
+  passedCount: number;
+  failedCount: number;
+  cannotValidateCount: number;
+  errorCount: number;
+  passRate: number;
+  durationMs: number;
+}
 
 export function ManualChecksView() {
   const datasets = useAnalyticsStore((state) => state.datasets);
   const selectedDatasetId = useAnalyticsStore((state) => state.selectedDatasetId);
   const selectedSheetName = useAnalyticsStore((state) => state.selectedSheetName);
   const selectDataset = useAnalyticsStore((state) => state.selectDataset);
-  const selectSheet = useAnalyticsStore((state) => state.selectSheet);
   const setActiveTab = useAnalyticsStore((state) => state.setActiveTab);
 
-  // Active dataset and sheet resolution
-  const activeDataset: Dataset | null = useMemo(() => {
-    return datasets.find((d) => d.id === selectedDatasetId) || datasets[0] || null;
-  }, [datasets, selectedDatasetId]);
+  // Selected datasets to validate (supports 1, 2, 3, 4, 5+ files!)
+  const [selectedDatasetIds, setSelectedDatasetIds] = useState<string[]>([]);
 
-  const activeSheet: SheetData | null = useMemo(() => {
-    if (!activeDataset) return null;
-    return (
-      activeDataset.sheets.find((s) => s.name === selectedSheetName) ||
-      activeDataset.sheets[0] ||
-      null
-    );
-  }, [activeDataset, selectedSheetName]);
+  // Validation rules
+  const [rules, setRules] = useState<ManualRuleConfig[]>([]);
 
-  // Working state key: isolates state by dataset and sheet
-  const scopeKey = useMemo(() => {
-    return `${activeDataset?.id || "none"}:${activeSheet?.name || "none"}`;
-  }, [activeDataset, activeSheet]);
-
-  // Default initial rules for the active sheet
-  const defaultRules: ManualRuleConfig[] = useMemo(() => {
-    if (!activeSheet || activeSheet.headers.length === 0) return [];
-    const headers = activeSheet.headers;
-    const numCol = headers.find((h) => activeSheet.columnTypes[h] === "number") || headers[0];
-    const catCol = headers.find((h) => activeSheet.columnTypes[h] === "string") || headers[0];
-
-    return [
-      {
-        id: "rule_1",
-        name: `Required ${catCol}`,
-        description: `Ensure ${catCol} is non-empty for all records`,
-        templateType: "required",
-        category: "validation",
-        enabled: true,
-        targetColumn: catCol,
-      },
-      {
-        id: "rule_2",
-        name: `Positive ${numCol}`,
-        description: `Verify that ${numCol} is greater than or equal to 0`,
-        templateType: "range",
-        category: "validation",
-        enabled: true,
-        targetColumn: numCol,
-        minBound: 0,
-        inclusiveBounds: true,
-      },
-    ];
-  }, [activeSheet]);
-
-  const [manualRulesByScope, setManualRulesByScope] = useState<Record<string, ManualRuleConfig[]>>({});
-  const [suiteResultsByScope, setSuiteResultsByScope] = useState<
-    Record<string, { results: RuleEvaluationResult[]; summary: ValidationSuiteSummary | null }>
-  >({});
-  const [isExecutingValidation, setIsExecutingValidation] = useState<boolean>(false);
-  const [validationProgress, setValidationProgress] = useState<number>(0);
+  // Validation execution state
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [progressPercent, setProgressPercent] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Filter & Search state for results table
-  const [resultOutcomeFilter, setResultOutcomeFilter] = useState<string>("all");
-  const [resultRuleFilter, setResultRuleFilter] = useState<string>("all");
-  const [resultSearchQuery, setResultSearchQuery] = useState<string>("");
+  // Validation results
+  const [evaluationResults, setEvaluationResults] = useState<MultiDatasetEvaluationResult[]>([]);
+  const [datasetReports, setDatasetReports] = useState<DatasetValidationReport[]>([]);
+  const [totalExecutionTimeMs, setTotalExecutionTimeMs] = useState(0);
+  const [hasRun, setHasRun] = useState(false);
 
-  // Rule Builder Modal state
-  const [isRuleModalOpen, setIsRuleModalOpen] = useState<boolean>(false);
+  // Result filters
+  const [filterOutcome, setFilterOutcome] = useState<string>("all");
+  const [filterDatasetName, setFilterDatasetName] = useState<string>("all");
+  const [filterRuleId, setFilterRuleId] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Modals
+  const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<Partial<ManualRuleConfig> | null>(null);
   const [ruleSyntaxError, setRuleSyntaxError] = useState<string | null>(null);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isTipsBannerDismissed, setIsTipsBannerDismissed] = useState(false);
 
-  // Active rules for current dataset/sheet
-  const currentRules = manualRulesByScope[scopeKey] || defaultRules;
-  const currentResultsData = suiteResultsByScope[scopeKey] || { results: [], summary: null };
+  // Pagination for results table
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 15;
 
-  const setCurrentRules = (updater: (prev: ManualRuleConfig[]) => ManualRuleConfig[]) => {
-    setManualRulesByScope((prev) => {
-      const existing = prev[scopeKey] || defaultRules;
-      const updated = updater(existing);
-      return { ...prev, [scopeKey]: updated };
-    });
-    // Mark results stale when rules change
-    setSuiteResultsByScope((prev) => {
-      const entry = prev[scopeKey];
-      if (!entry || !entry.summary) return prev;
-      return {
-        ...prev,
-        [scopeKey]: {
-          ...entry,
-          summary: { ...entry.summary, isStale: true },
-        },
-      };
-    });
-  };
-
-  // Execute manual validation suite
-  const handleRunValidation = async () => {
-    if (!activeSheet || !activeDataset) {
-      toast.error("No active dataset selected.");
-      return;
-    }
-    const enabled = currentRules.filter((r) => r.enabled);
-    if (enabled.length === 0) {
-      toast.error("Please enable at least one rule to run validation.");
-      return;
-    }
-
-    try {
-      setIsExecutingValidation(true);
-      setValidationProgress(0);
-      abortControllerRef.current = new AbortController();
-
-      const { results, summary } = await executeValidationSuite(
-        activeSheet,
-        activeDataset.id,
-        currentRules,
-        (progress) => setValidationProgress(progress),
-        abortControllerRef.current.signal
-      );
-
-      setSuiteResultsByScope((prev) => ({
-        ...prev,
-        [scopeKey]: { results, summary },
-      }));
-
-      toast.success(
-        `Validation finished! Evaluated ${summary.totalEvaluations.toLocaleString()} assertions in ${summary.executionDurationMs}ms.`
-      );
-    } catch (err: any) {
-      if (err.message?.includes("cancelled")) {
-        toast.info("Validation was cancelled.");
+  // Initialize selected datasets on mount
+  useEffect(() => {
+    if (datasets.length > 0 && selectedDatasetIds.length === 0) {
+      if (selectedDatasetId) {
+        setSelectedDatasetIds([selectedDatasetId]);
       } else {
-        toast.error(`Validation failed: ${err.message}`);
+        setSelectedDatasetIds(datasets.map((d) => d.id)); // Default to checking all files
       }
-    } finally {
-      setIsExecutingValidation(false);
-      abortControllerRef.current = null;
     }
+  }, [datasets, selectedDatasetId, selectedDatasetIds.length]);
+
+  // Selected dataset objects
+  const selectedDatasets = useMemo(() => {
+    return datasets.filter((d) => selectedDatasetIds.includes(d.id));
+  }, [datasets, selectedDatasetIds]);
+
+  // Total rows to be checked
+  const totalRowsCount = useMemo(() => {
+    return selectedDatasets.reduce((sum, d) => sum + (d.sheets[0]?.rowCount || 0), 0);
+  }, [selectedDatasets]);
+
+  // Available column names across all selected datasets
+  const availableColumns = useMemo(() => {
+    if (selectedDatasets.length === 0) return [];
+    const colMap = new Map<string, { type: string; count: number }>();
+
+    selectedDatasets.forEach((d) => {
+      const sheet = d.sheets[0];
+      if (sheet) {
+        sheet.headers.forEach((h) => {
+          const existing = colMap.get(h) || { type: sheet.columnTypes[h] || "string", count: 0 };
+          existing.count++;
+          colMap.set(h, existing);
+        });
+      }
+    });
+
+    const list: { name: string; type: string; isCommon: boolean }[] = [];
+    colMap.forEach((meta, col) => {
+      list.push({
+        name: col,
+        type: meta.type,
+        isCommon: meta.count === selectedDatasets.length,
+      });
+    });
+
+    return list;
+  }, [selectedDatasets]);
+
+  // Initialize sensible starter rules when columns become available
+  useEffect(() => {
+    if (availableColumns.length > 0 && rules.length === 0) {
+      const numCol = availableColumns.find((c) => c.type === "number")?.name;
+      const textCol = availableColumns.find((c) => c.type === "string")?.name || availableColumns[0].name;
+
+      const starters: ManualRuleConfig[] = [
+        {
+          id: "rule_1",
+          name: `Make sure "${textCol}" is not blank`,
+          description: `Checks that every row has a valid value in ${textCol}`,
+          templateType: "required",
+          category: "validation",
+          enabled: true,
+          targetColumn: textCol,
+        },
+      ];
+
+      if (numCol) {
+        starters.push({
+          id: "rule_2",
+          name: `Check "${numCol}" is a positive number (>= 0)`,
+          description: `Checks that ${numCol} is at least 0`,
+          templateType: "range",
+          category: "validation",
+          enabled: true,
+          targetColumn: numCol,
+          minBound: 0,
+          inclusiveBounds: true,
+        });
+      }
+
+      setRules(starters);
+    }
+  }, [availableColumns, rules.length]);
+
+  // Toggle selection of a dataset
+  const toggleDatasetSelection = (id: string) => {
+    setSelectedDatasetIds((prev) => {
+      if (prev.includes(id)) {
+        if (prev.length === 1) {
+          toast.error("Please keep at least one spreadsheet selected!");
+          return prev;
+        }
+        return prev.filter((item) => item !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+    setHasRun(false);
   };
 
-  // Cancel validation execution
-  const handleCancelValidation = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+  const selectAllDatasets = () => {
+    setSelectedDatasetIds(datasets.map((d) => d.id));
+    setHasRun(false);
   };
 
-  // Open Rule Modal
+  // Rule operations
+  const handleToggleRule = (id: string) => {
+    setRules((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r))
+    );
+  };
+
+  const handleDeleteRule = (id: string) => {
+    setRules((prev) => prev.filter((r) => r.id !== id));
+    toast.success("Rule removed.");
+  };
+
   const handleOpenAddRule = (template: RuleTemplateType = "required") => {
-    const targetCol = activeSheet?.headers[0] || "";
-    const isCalc = template === "calculate";
+    const targetCol = availableColumns[0]?.name || "";
+    const secondCol = availableColumns[1]?.name || targetCol;
+
+    let defaultName = `Check ${targetCol} is not blank`;
+    if (template === "range") defaultName = `Check ${targetCol} is within range`;
+    if (template === "match_column") defaultName = `Make sure ${targetCol} equals ${secondCol}`;
+    if (template === "calculate") defaultName = `Calculate expected ${targetCol}`;
+    if (template === "compare_calculated") defaultName = `Verify ${targetCol} calculation formula`;
+    if (template === "custom_formula") defaultName = `Custom math check for ${targetCol}`;
 
     setEditingRule({
       id: `rule_${Date.now()}`,
-      name:
-        template === "required"
-          ? `Required ${targetCol}`
-          : template === "range"
-          ? `Range check on ${targetCol}`
-          : template === "match_column"
-          ? `Match ${targetCol} with ${activeSheet?.headers[1] || targetCol}`
-          : template === "calculate"
-          ? `Calculate Expected ${targetCol}`
-          : template === "compare_calculated"
-          ? `Verify ${targetCol} Formula`
-          : "Custom Business Condition",
+      name: defaultName,
       templateType: template,
-      category: isCalc ? "calculation" : "validation",
+      category: template === "calculate" ? "calculation" : "validation",
       enabled: true,
       targetColumn: targetCol,
-      secondaryColumn: activeSheet?.headers[1] || targetCol,
+      secondaryColumn: secondCol,
       minBound: 0,
-      maxBound: 1000000,
+      maxBound: 100,
       inclusiveBounds: true,
       numericTolerance: 0.01,
       roundingDecimals: 2,
@@ -223,17 +260,13 @@ export function ManualChecksView() {
     setIsRuleModalOpen(true);
   };
 
-  // Save rule from modal
   const handleSaveRule = () => {
-    if (!editingRule || !editingRule.name || !editingRule.targetColumn) {
-      toast.error("Please provide rule name and target column.");
+    if (!editingRule || !editingRule.name?.trim() || !editingRule.targetColumn) {
+      toast.error("Please enter a rule name and choose a column.");
       return;
     }
 
-    // Validate formula if applicable
-    if (
-      ["calculate", "compare_calculated", "custom_formula"].includes(editingRule.templateType || "")
-    ) {
+    if (["calculate", "compare_calculated", "custom_formula"].includes(editingRule.templateType || "")) {
       const expr = editingRule.formulaExpression || "";
       const { error } = compileFormula(expr);
       if (error) {
@@ -242,81 +275,186 @@ export function ManualChecksView() {
       }
     }
 
-    const ruleToSave = editingRule as ManualRuleConfig;
-    setCurrentRules((prev) => {
-      const idx = prev.findIndex((r) => r.id === ruleToSave.id);
+    const saved = editingRule as ManualRuleConfig;
+    setRules((prev) => {
+      const idx = prev.findIndex((r) => r.id === saved.id);
       if (idx >= 0) {
         const copy = [...prev];
-        copy[idx] = ruleToSave;
+        copy[idx] = saved;
         return copy;
       }
-      return [...prev, ruleToSave];
+      return [...prev, saved];
     });
 
     setIsRuleModalOpen(false);
     setEditingRule(null);
-    toast.success(`Rule "${ruleToSave.name}" saved!`);
+    toast.success(`Rule "${saved.name}" saved!`);
   };
 
-  // Delete rule
-  const handleDeleteRule = (id: string) => {
-    setCurrentRules((prev) => prev.filter((r) => r.id !== id));
-    toast.success("Rule removed.");
-  };
-
-  // Toggle rule
-  const handleToggleRule = (id: string) => {
-    setCurrentRules((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r))
-    );
-  };
-
-  // Filtered results for the table
-  const filteredResults = useMemo(() => {
-    const list = currentResultsData.results;
-    return list.filter((item) => {
-      if (resultOutcomeFilter !== "all" && item.outcome !== resultOutcomeFilter) {
-        return false;
-      }
-      if (resultRuleFilter !== "all" && item.ruleId !== resultRuleFilter) {
-        return false;
-      }
-      if (resultSearchQuery.trim()) {
-        const q = resultSearchQuery.toLowerCase();
-        const rowMatch = `row #${item.rowId}`.includes(q) || String(item.rowId).includes(q);
-        const colMatch = item.targetColumn.toLowerCase().includes(q);
-        const reasonMatch = item.reason.toLowerCase().includes(q);
-        const actualMatch = String(item.actualValue ?? "").toLowerCase().includes(q);
-        if (!rowMatch && !colMatch && !reasonMatch && !actualMatch) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [currentResultsData.results, resultOutcomeFilter, resultRuleFilter, resultSearchQuery]);
-
-  // Export Results to CSV
-  const handleExportResultsCsv = () => {
-    if (currentResultsData.results.length === 0) {
-      toast.error("No results to export.");
+  // ==========================================
+  // RUN VALIDATION ACROSS MULTIPLE DATASETS
+  // ==========================================
+  const handleRunValidation = async () => {
+    if (selectedDatasets.length === 0) {
+      toast.error("Please pick at least one spreadsheet to check!");
       return;
     }
 
+    const enabledRules = rules.filter((r) => r.enabled);
+    if (enabledRules.length === 0) {
+      toast.error("Please enable at least one rule to run validation.");
+      return;
+    }
+
+    setIsExecuting(true);
+    setProgressPercent(0);
+    abortControllerRef.current = new AbortController();
+    const startTime = Date.now();
+
+    try {
+      const allResults: MultiDatasetEvaluationResult[] = [];
+      const reports: DatasetValidationReport[] = [];
+
+      for (let i = 0; i < selectedDatasets.length; i++) {
+        if (abortControllerRef.current?.signal.aborted) {
+          throw new Error("Validation was cancelled");
+        }
+
+        const ds = selectedDatasets[i];
+        const sheet = ds.sheets[0];
+        if (!sheet) continue;
+
+        const dsStartTime = Date.now();
+
+        // Run validation suite on this dataset
+        const { results, summary } = await executeValidationSuite(
+          sheet,
+          ds.id,
+          enabledRules,
+          (chunkProgress) => {
+            const overall = Math.round(((i + chunkProgress / 100) / selectedDatasets.length) * 100);
+            setProgressPercent(overall);
+          },
+          abortControllerRef.current?.signal
+        );
+
+        // Tag each result with dataset file name
+        results.forEach((r) => {
+          allResults.push({
+            ...r,
+            datasetName: ds.name,
+            datasetId: ds.id,
+            sheetName: sheet.name,
+          });
+        });
+
+        reports.push({
+          datasetId: ds.id,
+          datasetName: ds.name,
+          sheetName: sheet.name,
+          totalRows: summary.totalRows,
+          totalEvaluations: summary.totalEvaluations,
+          passedCount: summary.passedCount,
+          failedCount: summary.failedCount,
+          cannotValidateCount: summary.cannotValidateCount,
+          errorCount: summary.errorCount,
+          passRate: summary.totalEvaluations > 0
+            ? parseFloat(((summary.passedCount / summary.totalEvaluations) * 100).toFixed(1))
+            : 100,
+          durationMs: Date.now() - dsStartTime,
+        });
+      }
+
+      setEvaluationResults(allResults);
+      setDatasetReports(reports);
+      setTotalExecutionTimeMs(Date.now() - startTime);
+      setHasRun(true);
+      setPage(1);
+
+      const totalFailed = reports.reduce((s, r) => s + r.failedCount, 0);
+      if (totalFailed === 0) {
+        toast.success(`Amazing! All ${allResults.length.toLocaleString()} checks passed across ${selectedDatasets.length} spreadsheets! 🎉`);
+      } else {
+        toast.error(`Validation complete: Found ${totalFailed.toLocaleString()} mistakes across ${selectedDatasets.length} spreadsheets. Check details below!`);
+      }
+    } catch (err: any) {
+      if (err.message?.includes("cancelled")) {
+        toast.info("Validation was stopped.");
+      } else {
+        toast.error(`Validation failed: ${err.message}`);
+      }
+    } finally {
+      setIsExecuting(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleCancelValidation = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
+
+  // Overall aggregate metrics
+  const overallSummary = useMemo(() => {
+    const totalChecks = datasetReports.reduce((s, r) => s + r.totalEvaluations, 0);
+    const passed = datasetReports.reduce((s, r) => s + r.passedCount, 0);
+    const failed = datasetReports.reduce((s, r) => s + r.failedCount, 0);
+    const cannotValidate = datasetReports.reduce((s, r) => s + r.cannotValidateCount, 0);
+    const errors = datasetReports.reduce((s, r) => s + r.errorCount, 0);
+    const passRate = totalChecks > 0 ? parseFloat(((passed / totalChecks) * 100).toFixed(1)) : 100;
+
+    return { totalChecks, passed, failed, cannotValidate, errors, passRate };
+  }, [datasetReports]);
+
+  // Filtered results for the report card table
+  const filteredResults = useMemo(() => {
+    return evaluationResults.filter((item) => {
+      if (filterOutcome !== "all" && item.outcome !== filterOutcome) return false;
+      if (filterDatasetName !== "all" && item.datasetName !== filterDatasetName) return false;
+      if (filterRuleId !== "all" && item.ruleId !== filterRuleId) return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const rowMatch = `row #${item.rowId}`.includes(q) || String(item.rowId).includes(q);
+        const colMatch = item.targetColumn.toLowerCase().includes(q);
+        const fileMatch = item.datasetName.toLowerCase().includes(q);
+        const reasonMatch = item.reason.toLowerCase().includes(q);
+        const valMatch = String(item.actualValue ?? "").toLowerCase().includes(q);
+        if (!rowMatch && !colMatch && !fileMatch && !reasonMatch && !valMatch) return false;
+      }
+
+      return true;
+    });
+  }, [evaluationResults, filterOutcome, filterDatasetName, filterRuleId, searchQuery]);
+
+  // Paginated rows
+  const paginatedResults = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filteredResults.slice(start, start + rowsPerPage);
+  }, [filteredResults, page, rowsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredResults.length / rowsPerPage));
+
+  // Export Results to CSV
+  const handleExportCsv = () => {
+    if (evaluationResults.length === 0) return;
+
     const headers = [
-      "Row_ID",
+      "Spreadsheet_File",
+      "Row_Number",
       "Rule_Name",
-      "Category",
-      "Target_Column",
+      "Column_Checked",
       "Actual_Value",
       "Expected_Value",
-      "Outcome",
-      "Reason",
+      "Result_Status",
+      "Explanation",
     ];
 
-    const rows = currentResultsData.results.map((r) => [
+    const csvRows = evaluationResults.map((r) => [
+      `"${r.datasetName.replace(/"/g, '""')}"`,
       r.rowId,
       `"${r.ruleName.replace(/"/g, '""')}"`,
-      r.category,
       `"${r.targetColumn.replace(/"/g, '""')}"`,
       `"${String(r.actualValue ?? "").replace(/"/g, '""')}"`,
       `"${String(r.expectedValue ?? "").replace(/"/g, '""')}"`,
@@ -324,660 +462,958 @@ export function ManualChecksView() {
       `"${r.reason.replace(/"/g, '""')}"`,
     ]);
 
-    const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+    const csvContent = [headers.join(","), ...csvRows.map((row) => row.join(","))].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Validation_Results_${activeDataset?.name || "Dataset"}_${Date.now()}.csv`;
+    a.download = `Validation_Report_${selectedDatasets.length}_Files_${Date.now()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Validation results exported to CSV.");
+    toast.success("Downloaded Validation CSV Report!");
   };
 
-  // =========================================================================
-  // ZERO-STATE: NO DATASET SELECTED
-  // =========================================================================
-  if (!activeDataset || !activeSheet) {
+  // Export Results to Excel (.xlsx)
+  const handleExportExcel = () => {
+    if (evaluationResults.length === 0) return;
+
+    try {
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Summary Report Card
+      const summaryData = datasetReports.map((rep) => ({
+        "Spreadsheet Name": rep.datasetName,
+        "Total Rows": rep.totalRows,
+        "Total Checks": rep.totalEvaluations,
+        "Passed (OK)": rep.passedCount,
+        "Failed (Mistakes)": rep.failedCount,
+        "Cannot Check (Blank)": rep.cannotValidateCount,
+        "Errors": rep.errorCount,
+        "Pass Rate %": `${rep.passRate}%`,
+      }));
+      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, "Report_Card");
+
+      // Sheet 2: Only Failures (Defect Checklist)
+      const failedRows = evaluationResults
+        .filter((r) => r.outcome === "fail" || r.outcome === "error")
+        .map((r) => ({
+          "Spreadsheet File": r.datasetName,
+          "Row #": r.rowId,
+          "Rule Broken": r.ruleName,
+          "Column": r.targetColumn,
+          "Actual Value in Cell": String(r.actualValue ?? "null"),
+          "Expected Value": String(r.expectedValue ?? "-"),
+          "Why it Failed": r.reason,
+        }));
+
+      if (failedRows.length > 0) {
+        const wsFails = XLSX.utils.json_to_sheet(failedRows);
+        XLSX.utils.book_append_sheet(wb, wsFails, "Mistakes_To_Fix");
+      }
+
+      // Sheet 3: All Checks
+      const allData = evaluationResults.slice(0, 5000).map((r) => ({
+        "Spreadsheet File": r.datasetName,
+        "Row #": r.rowId,
+        "Rule": r.ruleName,
+        "Column": r.targetColumn,
+        "Actual Value": String(r.actualValue ?? "null"),
+        "Expected Value": String(r.expectedValue ?? "-"),
+        "Status": r.outcome.toUpperCase(),
+        "Explanation": r.reason,
+      }));
+      const wsAll = XLSX.utils.json_to_sheet(allData);
+      XLSX.utils.book_append_sheet(wb, wsAll, "All_Evaluations");
+
+      const fileName = `Validation_Report_${selectedDatasets.length}_Files.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      toast.success(`Downloaded ${fileName}!`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Could not export Excel workbook");
+    }
+  };
+
+  if (datasets.length === 0) {
     return (
-      <div className="min-h-[700px] flex flex-col items-center justify-center p-8 text-center space-y-6 max-w-2xl mx-auto">
-        <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-xl shadow-emerald-500/5">
-          <CheckSquare className="w-10 h-10" />
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-2xl font-extrabold text-white tracking-tight">
-            Data Validation & Manual Checks
-          </h2>
-          <p className="text-sm text-slate-400 leading-relaxed max-w-md mx-auto">
-            Build client-side validation rules and formulas with instant local execution, tolerance checks, and CSV reporting.
-          </p>
-        </div>
-
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full text-left space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-            <Database className="w-4 h-4 text-emerald-400" />
-            Get Started: Select or Upload a Dataset
-          </h3>
-
-          {datasets.length > 0 ? (
-            <div className="space-y-3">
-              <p className="text-xs text-slate-400">Choose one of your existing datasets to validate:</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {datasets.map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => selectDataset(d.id)}
-                    className="p-3 rounded-xl border border-slate-800 bg-slate-800/50 hover:bg-slate-800 hover:border-emerald-500/50 text-left transition-all"
-                  >
-                    <div className="text-xs font-bold text-white truncate">{d.name}</div>
-                    <div className="text-[11px] text-slate-400 mt-1">
-                      {d.sheets.length} Sheet(s) &bull; {d.sheets[0]?.rowCount.toLocaleString()} rows
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p className="text-xs text-slate-400">
-              No datasets loaded yet. Upload your Excel or CSV file to start creating checks.
-            </p>
-          )}
-
-          <div className="pt-2 flex items-center justify-end">
-            <Button
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs gap-2"
-              onClick={() => setActiveTab("upload")}
-            >
-              <UploadCloud className="w-4 h-4" />
-              Upload New Dataset
-            </Button>
-          </div>
-        </div>
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted-foreground bg-card border border-border rounded-2xl">
+        <CheckSquare className="h-12 w-12 opacity-30 mb-3 text-primary" />
+        <h3 className="font-display font-semibold text-lg text-foreground mb-1">No Spreadsheets Loaded Yet</h3>
+        <p className="text-xs max-w-sm mb-4">Please upload an Excel or CSV file in the Upload tab first so we can check it for errors.</p>
+        <Button size="sm" onClick={() => setActiveTab("upload")}>
+          Go to Upload Tab
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="w-full space-y-8 pb-20 animate-in fade-in duration-200">
+    <div className="flex-1 flex flex-col min-h-0 overflow-y-auto gap-5 pb-8">
+      
+      {/* ========================================== */}
+      {/* HEADER WITH 10TH-GRADE FRIENDLY EXPLANATION */}
+      {/* ========================================== */}
       <div className="flex flex-wrap items-center justify-between gap-4 shrink-0">
-        <h2 className="font-display font-bold text-2xl text-foreground flex items-center gap-2">
-          <Sparkles className="h-6 w-6 text-primary" />
-          <span>Data Validator (Rule Checks & Formulas)</span>
-        </h2>
-        <div className="flex items-center gap-2 pt-2 lg:pt-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setActiveTab("ai-validator")}
-              className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              <span>AI Report Validator</span>
-              <ArrowRight className="w-3 h-3 text-slate-500" />
-            </Button>
-          </div>
-        
-        {/* active status indicators */}
-        <div className="flex gap-2 text-xs font-semibold">
-          <div className="px-2.5 py-1 bg-accent border border-border rounded-lg text-muted-foreground flex items-center gap-1.5">
-            <Database className="h-3.5 w-3.5" />
-            <span className="text-foreground">{activeDataset.name}</span>
-          </div>
-          <div className="px-2.5 py-1 bg-accent border border-border rounded-lg text-muted-foreground flex items-center gap-1.5">
-            <Table className="h-3.5 w-3.5" />
-            <span className="text-foreground">{activeSheet.name}</span>
+        <div>
+          <h2 className="font-display font-bold text-2xl text-foreground flex items-center gap-2">
+            <CheckSquare className="h-6 w-6 text-primary" />
+            <span>Data Validator</span>
+          </h2>
+          <span className="text-xs text-muted-foreground font-medium block mt-0.5">
+            Like a digital spell-checker and math-grader for your spreadsheets. Check 1 file or 3, 4, 5+ files all at once!
+          </span>
+        </div>
+
+        {/* Action button & Student Guide */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10"
+            onClick={() => setIsGuideOpen(true)}
+          >
+            <BookOpen className="h-3.5 w-3.5 text-primary" />
+            <span>How to Use (Student Guide)</span>
+          </Button>
+
+          <div className="px-3 py-1 bg-accent/60 border border-border rounded-lg text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+            <Database className="h-3.5 w-3.5 text-primary" />
+            <span className="text-foreground">{selectedDatasets.length} of {datasets.length} Files Selected</span>
           </div>
         </div>
       </div>
-      {/* =========================================================================
-          TOP BANNER: SCOPE & OVERVIEW
-         ========================================================================= */}
-      {/* <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-48 bg-gradient-to-bl from-emerald-500/10 via-teal-500/5 to-transparent pointer-events-none" />
 
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <CheckSquare className="w-3.5 h-3.5" />
-                Data Prep & Visuals Module
-              </span>
-
-              <div className="flex items-center gap-1.5 bg-slate-800/90 px-3 py-1 rounded-lg border border-slate-700 text-xs text-slate-300">
-                <Database className="w-3.5 h-3.5 text-slate-400" />
-                <span>Dataset:</span>
-                <select
-                  value={activeDataset.id}
-                  onChange={(e) => selectDataset(e.target.value)}
-                  className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer"
-                >
-                  {datasets.map((d) => (
-                    <option key={d.id} value={d.id} className="bg-slate-900 text-white">
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-slate-600">&bull;</span>
-                <span>Sheet:</span>
-                <select
-                  value={activeSheet.name}
-                  onChange={(e) => selectSheet(e.target.value)}
-                  className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer"
-                >
-                  {activeDataset.sheets.map((s) => (
-                    <option key={s.name} value={s.name} className="bg-slate-900 text-white">
-                      {s.name} ({s.rowCount.toLocaleString()} rows)
-                    </option>
-                  ))}
-                </select>
-              </div>
+      {/* ========================================== */}
+      {/* TOP QUICK TIPS BANNER */}
+      {/* ========================================== */}
+      {!isTipsBannerDismissed && (
+        <div className="p-3.5 bg-primary/10 border border-primary/20 rounded-xl flex items-start justify-between gap-3 text-xs">
+          <div className="flex items-start gap-2.5">
+            <div className="p-1.5 rounded-lg bg-primary/20 text-primary mt-0.5 shrink-0">
+              <GraduationCap className="h-4 w-4" />
             </div>
-
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Create a Check (Rule Checks & Formulas)
-            </h1>
-            <p className="text-sm text-slate-400 max-w-3xl">
-              Configure deterministic data validation rules, bounds checks, column matches, and custom calculated formulas. Runs 100% locally with zero API or LLM latency.
-            </p>
+            <div>
+              <div className="font-bold text-foreground mb-0.5">How Data Validation Works:</div>
+              <p className="text-muted-foreground leading-relaxed text-[11px]">
+                <strong className="text-foreground">Step 1:</strong> Select which spreadsheets you want to inspect (pick 1, 2, 3, or all).<br />
+                <strong className="text-foreground">Step 2:</strong> Set up your rules (e.g. <em>"Name cannot be blank"</em> or <em>"Grade must be 0 to 100"</em>).<br />
+                <strong className="text-foreground">Step 3:</strong> Click <strong>"Check All Files"</strong>. We'll grade every row and highlight any errors!
+              </p>
+            </div>
           </div>
-
-          <div className="flex items-center gap-2 pt-2 lg:pt-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setActiveTab("ai-validator")}
-              className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              <span>AI Report Validator</span>
-              <ArrowRight className="w-3 h-3 text-slate-500" />
-            </Button>
-          </div>
+          <button
+            onClick={() => setIsTipsBannerDismissed(true)}
+            className="text-muted-foreground hover:text-foreground p-1 rounded-md transition-colors shrink-0"
+            title="Dismiss tip"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
-      </div> */}
+      )}
 
-      {/* =========================================================================
-          RULES SUITE MANAGER
-         ========================================================================= */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-1">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <CheckSquare className="w-5 h-5 text-emerald-400" />
-              Active Rule Suite
-            </h2>
-            <p className="text-xs text-slate-400">
-              Sandboxed AST expression engine with floating-point tolerance handling and financial precision.
-            </p>
+      {/* ========================================== */}
+      {/* STEP 1: PICK SPREADSHEETS (SUPPORTS >2 DATASETS) */}
+      {/* ========================================== */}
+      <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-3.5">
+        <div className="flex flex-wrap items-center justify-between border-b border-border pb-2.5 gap-2">
+          <div className="flex items-center gap-2">
+            <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold font-display">
+              1
+            </span>
+            <span className="text-xs font-bold text-foreground uppercase tracking-wider">
+              Step 1: Choose Spreadsheets to Inspect ({selectedDatasets.length} selected)
+            </span>
+            <span className="text-[11px] text-muted-foreground font-medium hidden sm:inline">
+              (You can select 1, 2, 3, 4, or more files at the same time!)
+            </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => handleOpenAddRule("required")}
-              className="bg-slate-800 hover:bg-slate-700 text-white text-xs border border-slate-700"
-            >
-              <Plus className="w-3.5 h-3.5 mr-1" />
-              Add Rule
-            </Button>
-
-            <Button
-              size="sm"
-              disabled={isExecutingValidation || currentRules.filter((r) => r.enabled).length === 0}
-              onClick={handleRunValidation}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs gap-2 px-4 shadow-sm shadow-emerald-600/20"
-            >
-              <Play className="w-3.5 h-3.5" />
-              <span>Run Validation ({activeSheet.rowCount.toLocaleString()} rows)</span>
-            </Button>
-          </div>
-        </div>
-
-        {/* Quick Template Picker Buttons */}
-        <div className="space-y-2 pt-2 border-t border-slate-800">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-            Quick Template Builders:
-          </span>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => handleOpenAddRule("required")}
-              className="px-3 py-1.5 rounded-lg text-xs bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Required Value</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleOpenAddRule("range")}
-              className="px-3 py-1.5 rounded-lg text-xs bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-blue-400" />
-              <span>Value within Range</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleOpenAddRule("match_column")}
-              className="px-3 py-1.5 rounded-lg text-xs bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors"
-            >
-              <Layers className="w-3.5 h-3.5 text-purple-400" />
-              <span>Match Another Column</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleOpenAddRule("calculate")}
-              className="px-3 py-1.5 rounded-lg text-xs bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors"
-            >
-              <Code2 className="w-3.5 h-3.5 text-amber-400" />
-              <span>Calculate Expected Value</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleOpenAddRule("compare_calculated")}
-              className="px-3 py-1.5 rounded-lg text-xs bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors"
-            >
-              <CheckSquare className="w-3.5 h-3.5 text-teal-400" />
-              <span>Compare Calculated vs Recorded</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleOpenAddRule("custom_formula")}
-              className="px-3 py-1.5 rounded-lg text-xs bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700 flex items-center gap-1.5 ml-auto text-indigo-300 font-semibold transition-colors"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Advanced Custom Formula</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Execution Progress Bar (if running) */}
-        {isExecutingValidation && (
-          <div className="bg-slate-950 p-4 rounded-xl border border-emerald-500/30 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-emerald-400 font-bold flex items-center gap-2">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                Executing Validation Suite... {validationProgress}%
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCancelValidation}
-                className="text-xs text-rose-400 hover:text-rose-300 h-6 px-2"
+          {datasets.length > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={selectAllDatasets}
+                className="text-xs font-semibold text-primary hover:underline"
               >
-                Cancel
-              </Button>
+                Select All ({datasets.length})
+              </button>
             </div>
-            <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+          )}
+        </div>
+
+        {/* Dataset Checkbox Chips */}
+        <div className="flex flex-wrap gap-2.5 pt-0.5">
+          {datasets.map((d) => {
+            const isSelected = selectedDatasetIds.includes(d.id);
+            const rowCount = d.sheets[0]?.rowCount || 0;
+
+            return (
+              <button
+                key={d.id}
+                onClick={() => toggleDatasetSelection(d.id)}
+                className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border text-xs transition-all select-none text-left ${
+                  isSelected
+                    ? "bg-primary/10 border-primary text-foreground font-bold shadow-sm ring-1 ring-primary/30"
+                    : "bg-accent/20 border-border text-muted-foreground hover:bg-accent/40 hover:text-foreground font-medium"
+                }`}
+              >
+                <div className="mt-0.5">
+                  {isSelected ? (
+                    <CheckSquare className="h-4 w-4 text-primary shrink-0" />
+                  ) : (
+                    <Square className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="truncate max-w-[210px] text-xs font-bold leading-tight">{d.name}</div>
+                  <div className="text-[10px] text-muted-foreground font-medium mt-0.5">
+                    {rowCount.toLocaleString()} rows to check
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Helpful text */}
+        <div className="text-[11px] text-muted-foreground bg-accent/30 p-2.5 rounded-lg flex items-center gap-2">
+          <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+          <span>
+            {selectedDatasets.length === 1 ? (
+              <>Validating <strong className="text-foreground">{selectedDatasets[0].name}</strong> ({totalRowsCount.toLocaleString()} rows).</>
+            ) : (
+              <>
+                Validating across <strong className="text-foreground">{selectedDatasets.length} spreadsheets simultaneously</strong> ({totalRowsCount.toLocaleString()} total rows). You will see a separate report card for every file!
+              </>
+            )}
+          </span>
+        </div>
+      </div>
+
+      {/* ========================================== */}
+      {/* STEP 2: SET UP VALIDATION RULES */}
+      {/* ========================================== */}
+      <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-4">
+        
+        <div className="flex flex-wrap items-center justify-between border-b border-border pb-3 gap-3">
+          <div className="flex items-center gap-2">
+            <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold font-display">
+              2
+            </span>
+            <span className="text-xs font-bold text-foreground uppercase tracking-wider">
+              Step 2: Choose Your Rules ({rules.filter((r) => r.enabled).length} active)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 text-xs font-semibold"
+              onClick={() => handleOpenAddRule("required")}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Create Custom Rule</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Quick Rule Templates (Pre-made checks) */}
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            Quick One-Click Rule Templates:
+          </span>
+          <div className="flex flex-wrap gap-2 pt-0.5">
+            <button
+              onClick={() => handleOpenAddRule("required")}
+              className="px-3 py-1.5 rounded-lg text-xs bg-accent hover:bg-accent/80 text-foreground border border-border flex items-center gap-1.5 font-medium transition-colors"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+              <span>Cannot Be Blank</span>
+            </button>
+            <button
+              onClick={() => handleOpenAddRule("range")}
+              className="px-3 py-1.5 rounded-lg text-xs bg-accent hover:bg-accent/80 text-foreground border border-border flex items-center gap-1.5 font-medium transition-colors"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 text-blue-500" />
+              <span>Number in Range (Min / Max)</span>
+            </button>
+            <button
+              onClick={() => handleOpenAddRule("match_column")}
+              className="px-3 py-1.5 rounded-lg text-xs bg-accent hover:bg-accent/80 text-foreground border border-border flex items-center gap-1.5 font-medium transition-colors"
+            >
+              <Layers className="h-3.5 w-3.5 text-purple-500" />
+              <span>Two Columns Must Match</span>
+            </button>
+            <button
+              onClick={() => handleOpenAddRule("compare_calculated")}
+              className="px-3 py-1.5 rounded-lg text-xs bg-accent hover:bg-accent/80 text-foreground border border-border flex items-center gap-1.5 font-medium transition-colors"
+            >
+              <Code2 className="h-3.5 w-3.5 text-amber-500" />
+              <span>Verify Math Formula</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Active Rules List */}
+        <div className="space-y-2.5 pt-1">
+          {rules.length === 0 ? (
+            <div className="py-6 text-center text-muted-foreground border border-dashed border-border rounded-xl text-xs">
+              No rules created yet. Click one of the quick templates above!
+            </div>
+          ) : (
+            rules.map((rule, idx) => (
               <div
-                className="h-full bg-emerald-500 transition-all duration-150"
-                style={{ width: `${validationProgress}%` }}
+                key={rule.id}
+                className={`p-3.5 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
+                  rule.enabled
+                    ? "bg-accent/20 border-border hover:border-primary/40"
+                    : "bg-accent/5 border-border/50 opacity-50"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={rule.enabled}
+                    onChange={() => handleToggleRule(rule.id)}
+                    className="mt-1 rounded border-border text-primary focus:ring-0 cursor-pointer h-4 w-4"
+                  />
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-foreground">{rule.name}</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-accent text-muted-foreground uppercase font-semibold">
+                        {rule.templateType.replace("_", " ")}
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-2">
+                      <span>Checking column: <strong className="text-foreground">{rule.targetColumn}</strong></span>
+                      {rule.templateType === "range" && (
+                        <span>&bull; Allowed between: <strong className="text-foreground">{rule.minBound} and {rule.maxBound ?? "+∞"}</strong></span>
+                      )}
+                      {rule.templateType === "match_column" && (
+                        <span>&bull; Must match: <strong className="text-foreground">{rule.secondaryColumn}</strong></span>
+                      )}
+                      {rule.formulaExpression && (
+                        <span>&bull; Formula: <code className="bg-accent px-1 rounded text-primary font-mono">{rule.formulaExpression}</code></span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 self-end sm:self-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setEditingRule({ ...rule });
+                      setIsRuleModalOpen(true);
+                    }}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-danger hover:bg-danger/10"
+                    onClick={() => handleDeleteRule(rule.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Progress Bar (if validating) */}
+        {isExecuting && (
+          <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl space-y-2 animate-pulse">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-primary font-bold flex items-center gap-2">
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                Grading and inspecting spreadsheets... {progressPercent}%
+              </span>
+              <button
+                onClick={handleCancelValidation}
+                className="text-xs text-danger font-semibold hover:underline"
+              >
+                Stop
+              </button>
+            </div>
+            <div className="w-full h-2 rounded-full bg-accent overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-150"
+                style={{ width: `${progressPercent}%` }}
               />
             </div>
           </div>
         )}
 
-        {/* Active Rules List */}
-        <div className="space-y-3">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            Configured Rules ({currentRules.length})
-          </span>
+        {/* Action Button: Run Validation */}
+        <div className="flex flex-wrap items-center justify-between border-t border-border pt-4 gap-3">
+          <div className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+            <Info className="h-4 w-4 text-primary shrink-0" />
+            <span>
+              {selectedDatasets.length === 1
+                ? `Will validate ${totalRowsCount.toLocaleString()} rows in 1 spreadsheet.`
+                : `Will validate ${totalRowsCount.toLocaleString()} rows across ${selectedDatasets.length} spreadsheets simultaneously.`}
+            </span>
+          </div>
 
-          {currentRules.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-500 bg-slate-950/40 rounded-xl border border-slate-800">
-              No validation rules created yet. Click one of the template builders above to add a check.
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {currentRules.map((rule) => (
-                <div
-                  key={rule.id}
-                  className={`p-3.5 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
-                    rule.enabled
-                      ? "bg-slate-800/50 border-slate-700/80"
-                      : "bg-slate-900/40 border-slate-800/60 opacity-60"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={rule.enabled}
-                      onChange={() => handleToggleRule(rule.id)}
-                      className="mt-1 rounded border-slate-700 text-emerald-600 focus:ring-0 cursor-pointer"
-                    />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-white">{rule.name}</span>
-                        <span
-                          className={`text-[10px] uppercase font-semibold px-1.5 py-0.2 rounded border ${
-                            rule.category === "calculation"
-                              ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                              : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
-                          }`}
-                        >
-                          {rule.category}
-                        </span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
-                          {rule.templateType}
-                        </span>
-                      </div>
-
-                      <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2">
-                        <span>
-                          Target: <strong className="text-slate-300 font-mono">{rule.targetColumn}</strong>
-                        </span>
-                        {rule.secondaryColumn && (
-                          <span>
-                            &bull; Match With:{" "}
-                            <strong className="text-slate-300 font-mono">{rule.secondaryColumn}</strong>
-                          </span>
-                        )}
-                        {rule.minBound !== undefined && (
-                          <span>
-                            &bull; Range: [{rule.minBound}, {rule.maxBound ?? "+∞"}]
-                          </span>
-                        )}
-                        {rule.formulaExpression && (
-                          <span className="font-mono text-indigo-300 text-[11px]">
-                            &bull; {rule.formulaExpression}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 self-end sm:self-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setEditingRule({ ...rule });
-                        setIsRuleModalOpen(true);
-                      }}
-                      className="text-xs text-slate-300 hover:text-white h-7 px-2"
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteRule(rule.id)}
-                      className="text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 h-7 px-2"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <Button
+            className="gap-2 h-10 px-7 font-bold shadow-md shadow-primary/20 text-sm"
+            onClick={handleRunValidation}
+            disabled={isExecuting || rules.filter((r) => r.enabled).length === 0}
+          >
+            <Play className="h-4 w-4" />
+            <span>
+              {selectedDatasets.length === 1
+                ? "Validate This Spreadsheet"
+                : `Validate All ${selectedDatasets.length} Spreadsheets`}
+            </span>
+          </Button>
         </div>
       </div>
 
-      {/* =========================================================================
-          RESULTS DASHBOARD (DISTINGUISHES CALCULATION VS VALIDATION)
-         ========================================================================= */}
-      {currentResultsData.summary && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-6 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
-            <div className="space-y-1">
+      {/* ========================================== */}
+      {/* STEP 3: REPORT CARD & INSPECTION RESULTS */}
+      {/* ========================================== */}
+      {hasRun && (
+        <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-5 animate-in fade-in duration-200">
+          
+          <div className="flex flex-wrap items-center justify-between border-b border-border pb-3.5 gap-4">
+            <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                  Validation Outcomes & Execution Results
+                <span className="h-6 w-6 rounded-full bg-success text-success-foreground flex items-center justify-center text-xs font-bold font-display">
+                  3
+                </span>
+                <ShieldCheck className="h-5 w-5 text-success" />
+                <h3 className="font-display font-bold text-lg text-foreground">
+                  Validation Report Card
                 </h3>
-                {currentResultsData.summary.isStale && (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                    Results Stale (Rules Modified)
-                  </span>
-                )}
               </div>
-              <p className="text-xs text-slate-400">
-                Executed locally across {currentResultsData.summary.totalRows.toLocaleString()} rows in {currentResultsData.summary.executionDurationMs}ms
+              <p className="text-xs text-muted-foreground font-semibold mt-1">
+                Completed in {totalExecutionTimeMs}ms across {selectedDatasets.length} spreadsheets ({totalRowsCount.toLocaleString()} rows checked).
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* Export Buttons */}
+            <div className="flex flex-wrap items-center gap-2">
               <Button
-                variant="outline"
                 size="sm"
-                onClick={handleExportResultsCsv}
-                className="border-slate-700 text-xs text-slate-200 hover:bg-slate-800 gap-1.5"
+                variant="outline"
+                className="h-8 text-xs gap-1.5"
+                onClick={handleExportExcel}
+                title="Download detailed Excel Report with Mistake Checklist"
               >
-                <FileDown className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Export Validation CSV</span>
+                <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-500" />
+                <span>Download Excel Report</span>
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs gap-1.5"
+                onClick={handleExportCsv}
+                title="Download CSV report"
+              >
+                <FileText className="h-3.5 w-3.5 text-blue-500" />
+                <span>Download CSV</span>
               </Button>
             </div>
           </div>
 
-          {/* Summary Scoreboard KPIs */}
+          {/* Overall Scoreboard Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-700/60">
-              <span className="text-[11px] text-slate-400 uppercase font-medium">Evaluations</span>
-              <div className="text-lg font-bold text-white mt-1">
-                {currentResultsData.summary.totalEvaluations.toLocaleString()}
+            <div className="bg-accent/30 p-3.5 rounded-xl border border-border text-center sm:text-left">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase">Total Checks</span>
+              <div className="text-xl font-display font-bold text-foreground mt-0.5">
+                {overallSummary.totalChecks.toLocaleString()}
               </div>
-              <span className="text-[10px] text-slate-500">
-                {currentResultsData.summary.totalRows.toLocaleString()} dataset rows
-              </span>
+              <span className="text-[10px] text-muted-foreground">across all files</span>
             </div>
 
-            <div className="bg-emerald-950/20 p-3 rounded-xl border border-emerald-500/20">
-              <span className="text-[11px] text-emerald-400 uppercase font-medium">Passed</span>
-              <div className="text-lg font-bold text-emerald-400 mt-1">
-                {currentResultsData.summary.passedCount.toLocaleString()}
+            <div className="bg-success/10 p-3.5 rounded-xl border border-success/30 text-center sm:text-left">
+              <span className="text-[10px] font-bold text-success uppercase">Passed ✅</span>
+              <div className="text-xl font-display font-bold text-success mt-0.5">
+                {overallSummary.passed.toLocaleString()}
               </div>
-              <span className="text-[10px] text-slate-500">
-                {currentResultsData.summary.totalEvaluations > 0
-                  ? (
-                      (currentResultsData.summary.passedCount /
-                        currentResultsData.summary.totalEvaluations) *
-                      100
-                    ).toFixed(1)
-                  : 0}
-                % pass rate
-              </span>
+              <span className="text-[10px] text-success/80 font-semibold">{overallSummary.passRate}% pass rate</span>
             </div>
 
-            <div className="bg-rose-950/20 p-3 rounded-xl border border-rose-500/20">
-              <span className="text-[11px] text-rose-400 uppercase font-medium">Failed</span>
-              <div className="text-lg font-bold text-rose-400 mt-1">
-                {currentResultsData.summary.failedCount.toLocaleString()}
+            <div className="bg-danger/10 p-3.5 rounded-xl border border-danger/30 text-center sm:text-left">
+              <span className="text-[10px] font-bold text-danger uppercase">Failed (Mistakes) ❌</span>
+              <div className="text-xl font-display font-bold text-danger mt-0.5">
+                {overallSummary.failed.toLocaleString()}
               </div>
-              <span className="text-[10px] text-slate-500">Defect anomalies</span>
+              <span className="text-[10px] text-danger/80">Rules broken</span>
             </div>
 
-            <div className="bg-amber-950/20 p-3 rounded-xl border border-amber-500/20">
-              <span className="text-[11px] text-amber-400 uppercase font-medium">Cannot Validate</span>
-              <div className="text-lg font-bold text-amber-400 mt-1">
-                {currentResultsData.summary.cannotValidateCount.toLocaleString()}
+            <div className="bg-amber-500/10 p-3.5 rounded-xl border border-amber-500/30 text-center sm:text-left">
+              <span className="text-[10px] font-bold text-amber-500 uppercase">Cannot Check ⚠️</span>
+              <div className="text-xl font-display font-bold text-amber-500 mt-0.5">
+                {overallSummary.cannotValidate.toLocaleString()}
               </div>
-              <span className="text-[10px] text-slate-500">Blank or missing inputs</span>
+              <span className="text-[10px] text-amber-500/80">Blank or missing</span>
             </div>
 
-            <div className="bg-purple-950/20 p-3 rounded-xl border border-purple-500/20">
-              <span className="text-[11px] text-purple-400 uppercase font-medium">Errors</span>
-              <div className="text-lg font-bold text-purple-400 mt-1">
-                {currentResultsData.summary.errorCount.toLocaleString()}
+            <div className="bg-purple-500/10 p-3.5 rounded-xl border border-purple-500/30 text-center sm:text-left">
+              <span className="text-[10px] font-bold text-purple-500 uppercase">Errors 🛑</span>
+              <div className="text-xl font-display font-bold text-purple-500 mt-0.5">
+                {overallSummary.errors.toLocaleString()}
               </div>
-              <span className="text-[10px] text-slate-500">Div by zero / type faults</span>
+              <span className="text-[10px] text-purple-500/80">Math faults</span>
             </div>
           </div>
 
-          {/* Working Filters & Search Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+          {/* Individual Spreadsheet Breakdown Cards (When > 1 file checked) */}
+          {selectedDatasets.length > 1 && (
+            <div className="space-y-2 pt-1">
+              <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span>Spreadsheet Report Cards ({datasetReports.length} files):</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {datasetReports.map((rep) => {
+                  const isSelected = filterDatasetName === rep.datasetName;
+                  const isPerfect = rep.failedCount === 0;
+
+                  return (
+                    <div
+                      key={rep.datasetId}
+                      onClick={() => {
+                        setFilterDatasetName(isSelected ? "all" : rep.datasetName);
+                        setPage(1);
+                      }}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-primary/10 border-primary ring-2 ring-primary/20 shadow-sm"
+                          : "bg-accent/20 border-border hover:bg-accent/40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-bold text-xs text-foreground truncate max-w-[190px]">
+                          {rep.datasetName}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          isPerfect
+                            ? "bg-success/20 text-success"
+                            : "bg-danger/20 text-danger"
+                        }`}>
+                          {rep.passRate}% Pass
+                        </span>
+                      </div>
+
+                      <div className="text-xs text-muted-foreground flex items-center justify-between">
+                        <span>{rep.totalRows.toLocaleString()} rows checked</span>
+                        {rep.failedCount === 0 ? (
+                          <span className="text-success font-semibold flex items-center gap-1">
+                            <Check className="h-3 w-3" /> 0 Mistakes
+                          </span>
+                        ) : (
+                          <span className="text-danger font-semibold">
+                            {rep.failedCount} Mistakes Found
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="w-full bg-accent h-1.5 rounded-full overflow-hidden mt-2">
+                        <div
+                          className={`h-full transition-all ${isPerfect ? "bg-success" : "bg-primary"}`}
+                          style={{ width: `${rep.passRate}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Results Table Filters */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
             <div className="flex flex-wrap items-center gap-1.5">
               <button
-                onClick={() => setResultOutcomeFilter("all")}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  resultOutcomeFilter === "all"
-                    ? "bg-slate-700 text-white"
-                    : "bg-slate-800 text-slate-400 hover:text-white"
+                onClick={() => { setFilterOutcome("all"); setPage(1); }}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  filterOutcome === "all"
+                    ? "bg-primary text-primary-foreground font-bold shadow-sm"
+                    : "bg-accent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                All ({currentResultsData.results.length})
+                All Checks ({evaluationResults.length})
               </button>
+
               <button
-                onClick={() => setResultOutcomeFilter("pass")}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  resultOutcomeFilter === "pass"
-                    ? "bg-emerald-600 text-white"
-                    : "bg-slate-800 text-slate-400 hover:text-emerald-400"
+                onClick={() => { setFilterOutcome("pass"); setPage(1); }}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  filterOutcome === "pass"
+                    ? "bg-success text-white font-bold shadow-sm"
+                    : "bg-accent text-muted-foreground hover:text-success"
                 }`}
               >
-                Pass ({currentResultsData.summary.passedCount})
+                Passed ({overallSummary.passed})
               </button>
+
               <button
-                onClick={() => setResultOutcomeFilter("fail")}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  resultOutcomeFilter === "fail"
-                    ? "bg-rose-600 text-white"
-                    : "bg-slate-800 text-slate-400 hover:text-rose-400"
+                onClick={() => { setFilterOutcome("fail"); setPage(1); }}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  filterOutcome === "fail"
+                    ? "bg-danger text-white font-bold shadow-sm"
+                    : "bg-accent text-muted-foreground hover:text-danger"
                 }`}
               >
-                Fail ({currentResultsData.summary.failedCount})
+                Failed ({overallSummary.failed})
               </button>
+
               <button
-                onClick={() => setResultOutcomeFilter("cannot_validate")}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  resultOutcomeFilter === "cannot_validate"
-                    ? "bg-amber-600 text-white"
-                    : "bg-slate-800 text-slate-400 hover:text-amber-400"
+                onClick={() => { setFilterOutcome("cannot_validate"); setPage(1); }}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  filterOutcome === "cannot_validate"
+                    ? "bg-amber-500 text-white font-bold shadow-sm"
+                    : "bg-accent text-muted-foreground hover:text-amber-500"
                 }`}
               >
-                Cannot Validate ({currentResultsData.summary.cannotValidateCount})
-              </button>
-              <button
-                onClick={() => setResultOutcomeFilter("error")}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  resultOutcomeFilter === "error"
-                    ? "bg-purple-600 text-white"
-                    : "bg-slate-800 text-slate-400 hover:text-purple-400"
-                }`}
-              >
-                Errors ({currentResultsData.summary.errorCount})
+                Blank Cells ({overallSummary.cannotValidate})
               </button>
             </div>
 
             <div className="flex items-center gap-2">
-              <select
-                value={resultRuleFilter}
-                onChange={(e) => setResultRuleFilter(e.target.value)}
-                className="bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-xs text-white"
-              >
-                <option value="all">All Rules</option>
-                {currentRules.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
+              {/* Filter by file dropdown */}
+              {selectedDatasets.length > 1 && (
+                <select
+                  value={filterDatasetName}
+                  onChange={(e) => { setFilterDatasetName(e.target.value); setPage(1); }}
+                  className="bg-accent border border-border rounded-lg px-2.5 py-1 text-xs font-semibold text-foreground focus:outline-none"
+                >
+                  <option value="all">All Files</option>
+                  {selectedDatasets.map((d) => (
+                    <option key={d.name} value={d.name}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              )}
 
+              {/* Search box */}
               <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+                <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search row or value..."
-                  value={resultSearchQuery}
-                  onChange={(e) => setResultSearchQuery(e.target.value)}
-                  className="bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 w-40 sm:w-48"
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+                  className="bg-accent border border-border rounded-lg pl-8 pr-3 py-1 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-40"
                 />
               </div>
             </div>
           </div>
 
-          {/* Row-by-Row Evaluation Table */}
-          <div className="overflow-x-auto max-h-96 rounded-xl border border-slate-800">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-950 text-slate-400 sticky top-0">
+          {/* Row-by-Row Results Table */}
+          <div className="overflow-auto border border-border rounded-xl bg-accent/10 max-h-[460px]">
+            <table className="w-full text-left border-collapse text-xs select-text">
+              <thead className="bg-accent/40 border-b border-border sticky top-0 z-10 shadow-sm">
                 <tr>
-                  <th className="p-2.5 font-semibold">Row</th>
-                  <th className="p-2.5 font-semibold">Rule Name</th>
-                  <th className="p-2.5 font-semibold">Target Column</th>
-                  <th className="p-2.5 font-semibold">Actual / Recorded</th>
-                  <th className="p-2.5 font-semibold">Expected / Calculated</th>
-                  <th className="p-2.5 font-semibold">Outcome</th>
-                  <th className="p-2.5 font-semibold">Reason</th>
+                  {selectedDatasets.length > 1 && (
+                    <th className="px-3 py-2.5 font-bold text-foreground border-r border-border">
+                      Spreadsheet File
+                    </th>
+                  )}
+                  <th className="w-14 px-3 py-2.5 font-bold text-muted-foreground border-r border-border text-center">
+                    Row #
+                  </th>
+                  <th className="px-3 py-2.5 font-bold text-foreground border-r border-border">
+                    Rule Checked
+                  </th>
+                  <th className="px-3 py-2.5 font-bold text-foreground border-r border-border">
+                    Column
+                  </th>
+                  <th className="px-3 py-2.5 font-bold text-foreground border-r border-border">
+                    Actual Cell Value
+                  </th>
+                  <th className="px-3 py-2.5 font-bold text-foreground border-r border-border">
+                    Expected Value
+                  </th>
+                  <th className="px-3 py-2.5 font-bold text-foreground border-r border-border text-center">
+                    Result Status
+                  </th>
+                  <th className="px-3 py-2.5 font-bold text-foreground">
+                    Explanation
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80 text-slate-300">
-                {filteredResults.length === 0 ? (
+              <tbody className="divide-y divide-border">
+                {paginatedResults.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-6 text-center text-slate-500">
-                      No results matching the active filter.
+                    <td
+                      colSpan={selectedDatasets.length > 1 ? 8 : 7}
+                      className="py-12 text-center text-muted-foreground font-semibold"
+                    >
+                      No checks match your active filters. Try picking "All Checks".
                     </td>
                   </tr>
                 ) : (
-                  filteredResults.slice(0, 500).map((r, idx) => (
-                    <tr key={idx} className="hover:bg-slate-900/50">
-                      <td className="p-2.5 font-mono text-slate-400">#{r.rowId}</td>
-                      <td className="p-2.5 font-semibold text-white">{r.ruleName}</td>
-                      <td className="p-2.5 font-mono text-slate-300">{r.targetColumn}</td>
-                      <td className="p-2.5 font-mono text-slate-200">
-                        {r.actualValue !== null && r.actualValue !== undefined
-                          ? String(r.actualValue)
-                          : "null"}
-                      </td>
-                      <td className="p-2.5 font-mono text-slate-200">
-                        {r.expectedValue !== null && r.expectedValue !== undefined
-                          ? String(r.expectedValue)
-                          : "-"}
-                      </td>
-                      <td className="p-2.5">
-                        <span
-                          className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border inline-block ${
-                            r.outcome === "pass"
-                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                              : r.outcome === "fail"
-                              ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                              : r.outcome === "cannot_validate"
-                              ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                              : "bg-purple-500/10 text-purple-400 border-purple-500/20"
-                          }`}
-                        >
-                          {r.outcome.replace("_", " ")}
-                        </span>
-                      </td>
-                      <td className="p-2.5 text-slate-400 leading-tight max-w-xs truncate" title={r.reason}>
-                        {r.reason}
-                      </td>
-                    </tr>
-                  ))
+                  paginatedResults.map((r, idx) => {
+                    const isEven = idx % 2 === 0;
+
+                    return (
+                      <tr
+                        key={idx}
+                        className={`hover:bg-primary/5 transition-colors ${
+                          isEven ? "bg-card" : "bg-accent/15"
+                        }`}
+                      >
+                        {selectedDatasets.length > 1 && (
+                          <td className="px-3 py-2 border-r border-border font-bold text-foreground text-xs truncate max-w-[150px]">
+                            {r.datasetName}
+                          </td>
+                        )}
+                        <td className="w-14 px-3 py-2 text-muted-foreground text-center font-mono text-[10px] border-r border-border">
+                          #{r.rowId}
+                        </td>
+                        <td className="px-3 py-2 border-r border-border font-semibold text-foreground truncate max-w-[160px]">
+                          {r.ruleName}
+                        </td>
+                        <td className="px-3 py-2 border-r border-border font-mono text-muted-foreground text-xs">
+                          {r.targetColumn}
+                        </td>
+                        <td className="px-3 py-2 border-r border-border font-mono font-medium text-foreground truncate max-w-[120px]">
+                          {r.actualValue !== null && r.actualValue !== undefined ? String(r.actualValue) : "null"}
+                        </td>
+                        <td className="px-3 py-2 border-r border-border font-mono text-muted-foreground truncate max-w-[120px]">
+                          {r.expectedValue !== null && r.expectedValue !== undefined ? String(r.expectedValue) : "-"}
+                        </td>
+                        <td className="px-3 py-2 border-r border-border text-center">
+                          <span
+                            className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border inline-block ${
+                              r.outcome === "pass"
+                                ? "bg-success/10 text-success border-success/30"
+                                : r.outcome === "fail"
+                                ? "bg-danger/10 text-danger border-danger/30 font-extrabold"
+                                : r.outcome === "cannot_validate"
+                                ? "bg-amber-500/10 text-amber-500 border-amber-500/30"
+                                : "bg-purple-500/10 text-purple-500 border-purple-500/30"
+                            }`}
+                          >
+                            {r.outcome === "pass" ? "PASS ✅" : r.outcome === "fail" ? "FAIL ❌" : r.outcome === "cannot_validate" ? "BLANK ⚠️" : "ERROR 🛑"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground leading-tight truncate max-w-[220px]" title={r.reason}>
+                          {r.reason}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
-          {filteredResults.length > 500 && (
-            <p className="text-[11px] text-slate-500 text-right">
-              Showing first 500 of {filteredResults.length.toLocaleString()} matching records. Use CSV export for full details.
-            </p>
+
+          {/* Table Footer Pagination */}
+          {filteredResults.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between text-xs text-muted-foreground pt-1 select-none">
+              <div>
+                Showing checks{" "}
+                <span className="font-bold text-foreground">
+                  {(page - 1) * rowsPerPage + 1}
+                </span>{" "}
+                to{" "}
+                <span className="font-bold text-foreground">
+                  {Math.min(filteredResults.length, page * rowsPerPage)}
+                </span>{" "}
+                of{" "}
+                <span className="font-bold text-foreground">
+                  {filteredResults.length.toLocaleString()}
+                </span>{" "}
+                records
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  disabled={page === 1}
+                  onClick={() => setPage(1)}
+                  title="First Page"
+                >
+                  <ChevronsLeft className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+
+                <span className="font-bold px-2 text-foreground">
+                  Page {page} of {totalPages}
+                </span>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  title="Next Page"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  disabled={page === totalPages}
+                  onClick={() => setPage(totalPages)}
+                  title="Last Page"
+                >
+                  <ChevronsRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       )}
 
-      {/* =========================================================================
-          RULE CREATION / EDITING MODAL
-         ========================================================================= */}
+      {/* ========================================== */}
+      {/* 10TH-GRADE STUDENT GUIDE MODAL DIALOG */}
+      {/* ========================================== */}
+      <Dialog
+        isOpen={isGuideOpen}
+        onClose={() => setIsGuideOpen(false)}
+        title="🎓 Beginner's Guide to Data Validator"
+      >
+        <div className="space-y-4 text-xs text-foreground/90 font-normal leading-relaxed">
+          
+          <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl text-primary font-medium">
+            <div className="font-bold text-sm mb-1">What is Data Validation?</div>
+            Think of it like a teacher grading homework with an answer key! Instead of checking thousands of spreadsheet rows by hand to spot mistakes, you give Report-IQ rules (like "Scores must be between 0 and 100"), and it checks every single cell in seconds.
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
+              <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">1</span>
+              Checking Multiple Spreadsheets at Once
+            </h4>
+            <p className="text-muted-foreground">
+              Have 3, 4, or 5 different spreadsheets (like Gradebooks for Term 1, Term 2, Term 3, or monthly attendance sheets)?
+            </p>
+            <p className="text-muted-foreground">
+              In <strong>Step 1</strong>, just check all the spreadsheets you want to inspect! The Data Validator will grade all of them at the same time and show you a separate report card for every file!
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
+              <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">2</span>
+              Common Rule Types (With Easy Examples)
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              <div className="p-2.5 rounded-lg border border-border bg-accent/20">
+                <span className="font-bold text-foreground block mb-0.5">Cannot Be Blank</span>
+                <span className="text-muted-foreground">
+                  Checks that every row has a value.
+                  <br />
+                  <em className="text-primary font-semibold">Example:</em> Every student must have an ID number.
+                </span>
+              </div>
+              <div className="p-2.5 rounded-lg border border-border bg-accent/20">
+                <span className="font-bold text-foreground block mb-0.5">Number Range (Min / Max)</span>
+                <span className="text-muted-foreground">
+                  Keeps numbers between realistic boundaries.
+                  <br />
+                  <em className="text-primary font-semibold">Example:</em> Exam scores must be between 0 and 100.
+                </span>
+              </div>
+              <div className="p-2.5 rounded-lg border border-border bg-accent/20">
+                <span className="font-bold text-foreground block mb-0.5">Two Columns Must Match</span>
+                <span className="text-muted-foreground">
+                  Verifies that Column A equals Column B.
+                  <br />
+                  <em className="text-primary font-semibold">Example:</em> Password must equal Confirm Password.
+                </span>
+              </div>
+              <div className="p-2.5 rounded-lg border border-border bg-accent/20">
+                <span className="font-bold text-foreground block mb-0.5">Verify Math Formula</span>
+                <span className="text-muted-foreground">
+                  Recalculates a math formula to catch errors.
+                  <br />
+                  <em className="text-primary font-semibold">Example:</em> Total must equal Price × Quantity.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
+              <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">3</span>
+              What Do The Result Badges Mean?
+            </h4>
+            <ul className="space-y-1.5 text-muted-foreground list-disc pl-4">
+              <li><strong className="text-success">PASS ✅:</strong> Perfect! This row followed the rule with no issues.</li>
+              <li><strong className="text-danger">FAIL ❌:</strong> Mistake found! The cell value was wrong (e.g. score was 150 instead of 100).</li>
+              <li><strong className="text-amber-500">BLANK ⚠️:</strong> The cell was empty, so the check could not be completed.</li>
+              <li><strong className="text-purple-500">ERROR 🛑:</strong> Math error in formula (like dividing by zero).</li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
+              <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">4</span>
+              Exporting Your Mistake Checklist
+            </h4>
+            <p className="text-muted-foreground">
+              Click <strong className="text-foreground">Download Excel Report</strong> to get an Excel file containing a summary report card plus a dedicated <strong className="text-foreground">"Mistakes_To_Fix"</strong> tab that lists only the rows with problems!
+            </p>
+          </div>
+
+          <div className="pt-3 flex justify-end border-t border-border">
+            <Button size="sm" onClick={() => setIsGuideOpen(false)}>
+              Got it, thanks!
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* ========================================== */}
+      {/* RULE BUILDER / EDIT MODAL */}
+      {/* ========================================== */}
       {isRuleModalOpen && editingRule && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <CheckSquare className="w-5 h-5 text-emerald-400" />
-                <span>Configure Validation Rule</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsRuleModalOpen(false)}
-                className="text-slate-400 hover:text-white text-lg font-bold px-2"
-              >
-                ✕
-              </button>
+        <Dialog
+          isOpen={isRuleModalOpen}
+          onClose={() => setIsRuleModalOpen(false)}
+          title="Create a Validation Rule"
+        >
+          <div className="space-y-4 text-xs">
+            {/* Rule Name */}
+            <div>
+              <label className="block text-xs font-bold text-foreground mb-1">
+                Rule Name
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Check that Exam Score is between 0 and 100"
+                value={editingRule.name || ""}
+                onChange={(e) => setEditingRule((prev) => ({ ...prev, name: e.target.value }))}
+                className="w-full bg-accent/40 border border-border rounded-lg p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                autoFocus
+              />
             </div>
 
-            {/* Template Type Selector */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300">Rule Template</label>
+            {/* Template Type */}
+            <div>
+              <label className="block text-xs font-bold text-foreground mb-1">
+                Rule Type
+              </label>
               <select
                 value={editingRule.templateType}
                 onChange={(e) => {
@@ -988,225 +1424,128 @@ export function ManualChecksView() {
                     category: t === "calculate" ? "calculation" : "validation",
                   }));
                 }}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white"
+                className="w-full bg-accent/40 border border-border rounded-lg p-2 text-xs font-semibold text-foreground focus:outline-none"
               >
-                <option value="required">Required Value (Must not be blank)</option>
-                <option value="range">Value within a Range (Min / Max)</option>
-                <option value="match_column">Match Another Column</option>
-                <option value="calculate">Calculate an Expected Value (Calculation Only)</option>
-                <option value="compare_calculated">Compare Calculated with Existing Column</option>
-                <option value="custom_formula">Advanced Custom Formula (Boolean Condition)</option>
+                <option value="required">Cannot Be Blank (Must have a value)</option>
+                <option value="range">Number in Range (Min / Max)</option>
+                <option value="match_column">Must Match Another Column</option>
+                <option value="compare_calculated">Verify Math Formula (Check recorded vs calculated)</option>
+                <option value="calculate">Calculate Expected Value</option>
+                <option value="custom_formula">Custom Math Formula (Advanced)</option>
               </select>
             </div>
 
-            {/* Rule Name */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300">Rule Name</label>
-              <input
-                type="text"
-                value={editingRule.name || ""}
-                onChange={(e) => setEditingRule((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="e.g. Valid Service Amount"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white"
-              />
-            </div>
-
             {/* Target Column */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300">Target Column</label>
+            <div>
+              <label className="block text-xs font-bold text-foreground mb-1">
+                Which Column to Check?
+              </label>
               <select
                 value={editingRule.targetColumn}
-                onChange={(e) =>
-                  setEditingRule((prev) => ({ ...prev, targetColumn: e.target.value }))
-                }
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white"
+                onChange={(e) => setEditingRule((prev) => ({ ...prev, targetColumn: e.target.value }))}
+                className="w-full bg-accent/40 border border-border rounded-lg p-2 text-xs font-semibold text-foreground focus:outline-none"
               >
-                {activeSheet.headers.map((h) => (
-                  <option key={h} value={h}>
-                    {h} ({activeSheet.columnTypes[h] || "string"})
+                {availableColumns.map((col) => (
+                  <option key={col.name} value={col.name}>
+                    {col.name} ({col.type})
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Template Specific Options */}
+            {/* Range options */}
             {editingRule.templateType === "range" && (
-              <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800">
-                <div className="space-y-1">
-                  <span className="text-[11px] text-slate-400">Minimum Bound:</span>
+              <div className="grid grid-cols-2 gap-3 p-3 bg-accent/20 border border-border rounded-xl">
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
+                    Minimum Allowed Value
+                  </label>
                   <input
                     type="number"
-                    value={editingRule.minBound ?? ""}
-                    onChange={(e) =>
-                      setEditingRule((prev) => ({ ...prev, minBound: Number(e.target.value) }))
-                    }
-                    className="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white"
+                    value={editingRule.minBound ?? 0}
+                    onChange={(e) => setEditingRule((prev) => ({ ...prev, minBound: Number(e.target.value) }))}
+                    className="w-full bg-card border border-border rounded-lg p-1.5 text-xs text-foreground focus:outline-none"
                   />
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[11px] text-slate-400">Maximum Bound:</span>
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
+                    Maximum Allowed Value
+                  </label>
                   <input
                     type="number"
-                    value={editingRule.maxBound ?? ""}
-                    onChange={(e) =>
-                      setEditingRule((prev) => ({ ...prev, maxBound: Number(e.target.value) }))
-                    }
-                    className="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs text-white"
+                    value={editingRule.maxBound ?? 100}
+                    onChange={(e) => setEditingRule((prev) => ({ ...prev, maxBound: Number(e.target.value) }))}
+                    className="w-full bg-card border border-border rounded-lg p-1.5 text-xs text-foreground focus:outline-none"
                   />
                 </div>
-                <label className="col-span-2 flex items-center gap-2 cursor-pointer text-xs text-slate-300 pt-1">
-                  <input
-                    type="checkbox"
-                    checked={editingRule.inclusiveBounds !== false}
-                    onChange={(e) =>
-                      setEditingRule((prev) => ({ ...prev, inclusiveBounds: e.target.checked }))
-                    }
-                    className="rounded border-slate-700 text-emerald-600"
-                  />
-                  <span>Inclusive boundaries (min &le; value &le; max)</span>
-                </label>
               </div>
             )}
 
+            {/* Match column option */}
             {editingRule.templateType === "match_column" && (
-              <div className="space-y-1.5 p-3 rounded-xl bg-slate-950/60 border border-slate-800">
-                <label className="text-xs font-semibold text-slate-300">
-                  Secondary Column to Match With
+              <div className="p-3 bg-accent/20 border border-border rounded-xl">
+                <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">
+                  Must Equal Values in Column:
                 </label>
                 <select
                   value={editingRule.secondaryColumn}
-                  onChange={(e) =>
-                    setEditingRule((prev) => ({ ...prev, secondaryColumn: e.target.value }))
-                  }
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                  onChange={(e) => setEditingRule((prev) => ({ ...prev, secondaryColumn: e.target.value }))}
+                  className="w-full bg-card border border-border rounded-lg p-1.5 text-xs font-semibold text-foreground focus:outline-none"
                 >
-                  {activeSheet.headers.map((h) => (
-                    <option key={h} value={h}>
-                      {h}
+                  {availableColumns.map((col) => (
+                    <option key={col.name} value={col.name}>
+                      {col.name}
                     </option>
                   ))}
                 </select>
               </div>
             )}
 
-            {/* Formula Entry for Calculation & Compare */}
-            {["calculate", "compare_calculated", "custom_formula"].includes(
-              editingRule.templateType || ""
-            ) && (
-              <div className="space-y-2 p-3.5 rounded-xl bg-slate-950/80 border border-slate-800">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-300">
-                    Formula Expression (Sandboxed AST)
-                  </label>
-                  <span className="text-[10px] text-emerald-400 font-mono">
-                    Operators: +, -, *, /, %, ^, AND, OR, IF()
-                  </span>
-                </div>
-
+            {/* Formula expression */}
+            {["calculate", "compare_calculated", "custom_formula"].includes(editingRule.templateType || "") && (
+              <div className="p-3 bg-accent/20 border border-border rounded-xl space-y-2">
+                <label className="block text-[10px] font-bold text-muted-foreground uppercase">
+                  Math Formula (Use [Column_Name] in brackets)
+                </label>
                 <input
                   type="text"
+                  placeholder="e.g. [Price] * [Quantity] or [Exam] + [Homework]"
                   value={editingRule.formulaExpression || ""}
-                  onChange={(e) => {
-                    const expr = e.target.value;
-                    setEditingRule((prev) => ({ ...prev, formulaExpression: expr }));
-                    const { error } = compileFormula(expr);
-                    setRuleSyntaxError(error);
-                  }}
-                  placeholder="e.g. [Service Amount] * 0.18"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white font-mono"
+                  onChange={(e) => setEditingRule((prev) => ({ ...prev, formulaExpression: e.target.value }))}
+                  className="w-full bg-card border border-border rounded-lg p-2 text-xs font-mono text-primary focus:outline-none"
                 />
+                <span className="text-[10px] text-muted-foreground block">
+                  Example: <code className="text-foreground">[Price] * [Quantity]</code> or <code className="text-foreground">[Subtotal] + [Tax]</code>
+                </span>
 
-                {ruleSyntaxError ? (
-                  <p className="text-[11px] text-rose-400 font-medium">Syntax Error: {ruleSyntaxError}</p>
-                ) : (
-                  <p className="text-[10px] text-slate-500">
-                    Use <code>[Column Name]</code> for column values. Examples: <code>[Amount] * 1.18</code> or <code>IF([Status] == 'APPROVED', 1, 0)</code>.
-                  </p>
-                )}
-
-                {editingRule.templateType === "compare_calculated" && (
-                  <div className="flex items-center gap-3 pt-2">
-                    <span className="text-xs text-slate-400">Numeric Tolerance (&epsilon;):</span>
-                    <input
-                      type="number"
-                      step="0.001"
-                      value={editingRule.numericTolerance ?? 0.01}
-                      onChange={(e) =>
-                        setEditingRule((prev) => ({
-                          ...prev,
-                          numericTolerance: Number(e.target.value),
-                        }))
-                      }
-                      className="w-24 bg-slate-800 border border-slate-700 rounded p-1 text-xs text-white"
-                    />
+                {ruleSyntaxError && (
+                  <div className="p-2 rounded bg-danger/10 border border-danger/20 text-danger text-[11px]">
+                    Syntax Error: {ruleSyntaxError}
                   </div>
                 )}
               </div>
             )}
 
-            {/* 5-Row Live Preview of the Rule */}
-            <div className="space-y-2 pt-2 border-t border-slate-800">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Live Preview (First 5 Rows)
-              </span>
-
-              <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                {activeSheet.rows.slice(0, 5).map((row, idx) => {
-                  const { ast } = compileFormula(editingRule.formulaExpression || "");
-                  const previewRes = evaluateRuleOnRow(
-                    editingRule as ManualRuleConfig,
-                    row,
-                    idx + 1,
-                    ast
-                  );
-
-                  return (
-                    <div
-                      key={idx}
-                      className="p-2 rounded bg-slate-950 border border-slate-800 flex items-center justify-between text-[11px]"
-                    >
-                      <span className="font-mono text-slate-400">Row #{idx + 1}</span>
-                      <span className="font-mono text-slate-300">
-                        {editingRule.targetColumn}: {String(row[editingRule.targetColumn || ""] ?? "null")}
-                      </span>
-                      <span
-                        className={`font-bold uppercase text-[9px] px-1.5 py-0.2 rounded border ${
-                          previewRes.outcome === "pass"
-                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                            : previewRes.outcome === "fail"
-                            ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                            : "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                        }`}
-                      >
-                        {previewRes.outcome}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+            {/* Modal action buttons */}
+            <div className="pt-3 flex justify-end gap-2 border-t border-border">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={() => setIsRuleModalOpen(false)}
-                className="text-xs text-slate-300 hover:text-white"
               >
                 Cancel
               </Button>
               <Button
                 size="sm"
                 onClick={handleSaveRule}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-4"
               >
                 Save Rule
               </Button>
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
+
     </div>
   );
 }

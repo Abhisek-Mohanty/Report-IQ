@@ -107,13 +107,15 @@ export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   }),
 
   updateActiveSheetData: (updatedSheet) => set((state) => {
-    if (!state.selectedDatasetId || !state.selectedSheetName) return {};
+    if (!state.selectedDatasetId) return {};
 
     const updatedDatasets = state.datasets.map((dataset) => {
       if (dataset.id !== state.selectedDatasetId) return dataset;
 
+      const targetSheetName = state.selectedSheetName || updatedSheet.name || dataset.sheets[0]?.name;
+
       const updatedSheets = dataset.sheets.map((sheet) => {
-        if (sheet.name !== state.selectedSheetName) return sheet;
+        if (sheet.name !== targetSheetName) return sheet;
         return updatedSheet;
       });
 
