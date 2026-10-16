@@ -43,7 +43,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: "manual-checks", name: "Data Validator", icon: CheckSquare, category: "prep", requiresAuth: false },
   { id: "query", name: "Query Builder", icon: Filter, category: "prep", requiresAuth: false },
   { id: "visualizations", name: "Visualizations", icon: BarChart3, category: "prep", requiresAuth: false },
-  { id: "export", name: "Export Report", icon: Download, category: "prep", requiresAuth: false },
+  { id: "export", name: "Converter", icon: Download, category: "prep", requiresAuth: false },
   
   // AI Insights placeholders
   { id: "ai-insights", name: "AI Insights", icon: Brain, category: "ai", requiresAuth: true },

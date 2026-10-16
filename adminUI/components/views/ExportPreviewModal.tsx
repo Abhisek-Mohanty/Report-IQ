@@ -56,7 +56,7 @@ export function ExportPreviewModal({
   if (!isOpen || !format) return null;
 
   // Configuration options state: 0 = All Rows by default
-  const [rowLimit, setRowLimit] = useState<number>(0);
+  const [rowLimit, setRowLimit] = useState<number>(5);
   const [includeHeaders, setIncludeHeaders] = useState<boolean>(true);
   const [sqlDialect, setSqlDialect] = useState<"postgres" | "mysql" | "sqlite" | "mssql">("postgres");
   const [latexDocument, setLatexDocument] = useState<boolean>(true);
@@ -290,6 +290,7 @@ export function ExportPreviewModal({
                 onChange={(e) => setRowLimit(Number(e.target.value))}
                 className="bg-background border border-border rounded-lg px-2.5 py-1 text-xs text-foreground font-semibold focus:ring-1 focus:ring-primary outline-none"
               >
+                <option value={5}>First 5 Rows (Sample)</option>
                 <option value={0}>All {sheet.rows.length.toLocaleString()} Rows (Entire Dataset)</option>
                 <option value={25}>First 25 Rows (Sample)</option>
                 <option value={50}>First 50 Rows (Sample)</option>
