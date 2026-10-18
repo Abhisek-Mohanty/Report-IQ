@@ -7,10 +7,6 @@ import { SheetData } from "@/types";
  * Returns undefined if path is missing or invalid.
  */
 export function resolveJsonPointer(doc: any, pointer: string | null | undefined): any {
-  console.log(doc);
-  console.log(pointer);
-  console.log("=========>");
-  
   if (pointer === null || pointer === undefined || typeof pointer !== "string") {
     return undefined;
   }

@@ -6,6 +6,11 @@ import {
   ExtractedDocumentSection,
   ReferenceExcelPayload,
   ReferenceExcelScope,
+  ReferenceDatasetEntry,
+  ReferenceDocumentEntry,
+  ChatInteractionMessage,
+  AiValidationScenario,
+  UnifiedAiValidatorPayload,
 } from "@/types/validator";
 
 /**
@@ -255,5 +260,62 @@ export function buildDocumentRulesPayload(params: {
         type: activeSheet.columnTypes[h] || "string",
       })),
     },
+  };
+}
+
+/**
+ * Builds the typed unified request payload for multi-dataset and multi-document validation
+ */
+export function buildUnifiedAiValidatorPayload(params: {
+  activeDatasetId: string;
+  activeDatasetName: string;
+  activeSheet: SheetData;
+  activeSelectedColumns: string[];
+  referenceDatasets: ReferenceDatasetEntry[];
+  referenceDocuments: ReferenceDocumentEntry[];
+  selectedScenarioIds: string[];
+  selectedScenarios: AiValidationScenario[];
+  conversationHistory: ChatInteractionMessage[];
+  userPrompt: string;
+}): UnifiedAiValidatorPayload {
+  const {
+    activeDatasetId,
+    activeDatasetName,
+    activeSheet,
+    activeSelectedColumns,
+    referenceDatasets,
+    referenceDocuments,
+    selectedScenarioIds,
+    selectedScenarios,
+    conversationHistory,
+    userPrompt,
+  } = params;
+
+  const colsToProfile = activeSelectedColumns.length > 0 ? activeSelectedColumns : activeSheet.headers;
+  const activeProfiles = colsToProfile.map((col) => buildColumnProfile(activeSheet, col));
+  const activeExamples = extractRepresentativeRows(activeSheet.rows, activeSelectedColumns);
+
+  return {
+    payloadVersion: "2.0",
+    operationType: "unified_ai_validation",
+    createdAt: new Date().toISOString(),
+    userPrompt:
+      userPrompt.trim() ||
+      "Perform comprehensive multi-source validation, reconciliation, and policy rule checks.",
+    conversationHistory,
+    activeDataset: {
+      datasetId: activeDatasetId,
+      datasetName: activeDatasetName,
+      sheetName: activeSheet.name,
+      sourceRowCount: activeSheet.rowCount,
+      sourceColumnCount: activeSheet.columnCount,
+      selectedColumns: activeSelectedColumns,
+      columnProfiles: activeProfiles,
+      exampleRows: activeExamples,
+    },
+    referenceDatasets,
+    referenceDocuments,
+    selectedScenarioIds,
+    selectedScenarios,
   };
 }

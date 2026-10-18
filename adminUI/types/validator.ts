@@ -135,6 +135,116 @@ export interface DocumentRulesPayload {
 }
 
 /**
+ * Enhanced Reference Dataset Entry for multi-excel / multi-dataset comparison
+ */
+export interface ReferenceDatasetEntry {
+  id: string;
+  sourceType: "uploaded_file" | "workspace_dataset";
+  fileName: string;
+  fileSizeBytes: number;
+  sheetName: string;
+  availableSheets: string[];
+  sourceRowCount: number;
+  sourceColumnCount: number;
+  selectedColumns: string[];
+  rowScope: {
+    mode: "all" | "range" | "filter";
+    rangeStart?: number;
+    rangeEnd?: number;
+    filterColumn?: string;
+    filterOperator?: string;
+    filterValue?: string;
+    filterDescription?: string;
+  };
+  selectedRowCount: number;
+  columnProfiles: ColumnSummaryProfile[];
+  exampleRows: Record<string, any>[]; // Up to 5 representative rows
+  sheets?: any[];
+}
+
+/**
+ * Enhanced Reference Document Entry for multi-document rule extraction
+ */
+export interface ReferenceDocumentEntry {
+  id: string;
+  fileName: string;
+  fileSizeBytes: number;
+  fileType: string;
+  characterCount: number;
+  wordCount: number;
+  sectionCount: number;
+  sections: ExtractedDocumentSection[];
+  selectedSectionIndices: number[];
+  summary?: string;
+  extractedRules?: string[];
+  contentSnippet: string;
+}
+
+/**
+ * Interactive Chat Clarification and Question Message
+ */
+export interface ChatInteractionQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  selectedOption?: string;
+}
+
+export interface ChatInteractionMessage {
+  id: string;
+  sender: "user" | "ai" | "system";
+  text: string;
+  timestamp: string;
+  questions?: ChatInteractionQuestion[];
+  suggestedRules?: string[];
+}
+
+/**
+ * Selectable validation scenario/rule item (modeled like AiInsightsView scenario)
+ */
+export interface AiValidationScenario {
+  id: string;
+  title: string;
+  category: "reconciliation" | "policy" | "anomaly" | "integrity" | "calculation" | string;
+  source: "document" | "system" | "custom" | "insights";
+  ruleType: "equality" | "threshold" | "membership" | "formula" | "outlier" | string;
+  targetColumns: string[];
+  referenceColumns?: string[];
+  businessQuestion: string;
+  description: string;
+  tolerance?: number;
+  confidence: "high" | "medium" | "low";
+  suggestedAction: string;
+}
+
+/**
+ * Unified AI Validator Request Payload supporting multiple datasets, documents, chat interaction, and scenario rules
+ */
+export interface UnifiedAiValidatorPayload {
+  payloadVersion: "2.0";
+  operationType: "unified_ai_validation";
+  createdAt: string;
+  userPrompt: string;
+  conversationHistory: ChatInteractionMessage[];
+
+  activeDataset: {
+    datasetId: string;
+    datasetName: string;
+    sheetName: string;
+    sourceRowCount: number;
+    sourceColumnCount: number;
+    selectedColumns: string[];
+    columnProfiles: ColumnSummaryProfile[];
+    exampleRows: Record<string, any>[];
+  };
+
+  referenceDatasets: ReferenceDatasetEntry[];
+  referenceDocuments: ReferenceDocumentEntry[];
+  selectedScenarioIds: string[];
+  selectedScenarios: AiValidationScenario[];
+}
+
+/**
  * Manual validation and calculation rule types
  */
 export type RuleTemplateType =
