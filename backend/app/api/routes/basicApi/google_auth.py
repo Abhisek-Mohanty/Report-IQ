@@ -85,7 +85,7 @@ async def google_callback(
                         "picture": oUser.get("profilePic", ""),
                     })
                 })
-        return RedirectResponse(url=f"{frontend_url}/auth/callback?token={params}")
+        return RedirectResponse(url=f"{frontend_url}/auth/callback?{params}")
             
         # return {"access_token": access_token, "token": token}
     except Exception as e:

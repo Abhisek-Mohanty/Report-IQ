@@ -14,13 +14,15 @@ import {
   Download, 
   Brain, 
   MessageSquareCode, 
-  SearchCode, 
+  SearchCode,
+  BrainCog,  
   FileHeart, 
   Activity,
   MonitorCheck,
   CheckSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LoginModal } from "@/components/modals/LoginModal";
 
 interface SidebarItem {
   id: string;
@@ -46,7 +48,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: "export", name: "Converter", icon: Download, category: "prep", requiresAuth: false },
   
   // AI Insights placeholders
-  { id: "ai-insights", name: "AI Insights", icon: Brain, category: "ai", requiresAuth: true },
+  { id: "ai-insights", name: "AI Insights", icon: BrainCog, category: "ai", requiresAuth: true },
   { id: "ai-validator", name: "AI Report Validator", icon: MonitorCheck, category: "ai", requiresAuth: false },
   { id: "ai-chat", name: "AI Copilot Chat", icon: MessageSquareCode, category: "ai", requiresAuth: true },
   { id: "ai-query", name: "AI Query Agent", icon: SearchCode, category: "ai", requiresAuth: true },
@@ -123,7 +125,7 @@ export function Sidebar() {
       {/* Brand Logo Header */}
       <div className="h-16 flex items-center gap-2.5 px-6 border-b border-border">
         <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20">
-          <BarChart3 className="h-4 w-4 text-primary-foreground" />
+          <Brain className="h-5 w-5 text-primary-foreground" />
         </div>
         <div>
           <h1 className="font-display font-bold text-base leading-none text-foreground">Report IQ</h1>
@@ -149,41 +151,10 @@ export function Sidebar() {
             Active: <span className="font-semibold text-foreground">{datasets[datasets.length - 1].name}</span>
           </div>
         )}
-        {showLoginModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-              <div className="w-96 rounded-xl bg-card p-6 shadow-xl">
-
-                <h2 className="text-xl font-semibold">
-                  Login Required
-                </h2>
-
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Please login to use Report IQ AI features.
-                </p>
-
-                <div className="mt-6 flex justify-end gap-3">
-
-                  <button
-                    onClick={() => setShowLoginModal(false)}
-                    className="rounded-lg px-4 py-2 text-sm hover:bg-accent"
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      window.location.href =
-                        "http://localhost:8000/api/v1/auth/google";
-                    }}
-                    className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"
-                  >
-                    Login with Google
-                  </button>
-
-                </div>
-              </div>
-            </div>
-          )}
+        <LoginModal
+          isOpen={showLoginModal}
+          onClose={() => setShowLoginModal(false)}
+        />
       </div>
     </aside>
   );

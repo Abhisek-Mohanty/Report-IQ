@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useAnalyticsStore } from "@/store/useAnalyticsStore";
-import { Sun, Moon, Bell, Settings, Search, Database, LogOut } from "lucide-react";
+import { Sun, Moon, Bell, Settings, Search, Database, LogOut, User } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
@@ -11,17 +11,34 @@ import { auth } from "@/lib/auth";
 
 export function Navbar() {
   const [name, setName] = React.useState("Guest User");
+  const [email, setEmail] = React.useState("");
   const [picture, setPicture] = React.useState("/assets/business.png");
+  const [imageError, setImageError] = React.useState(false);
+  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+
   React.useEffect(() => {
-  const profile_info = localStorage.getItem("profile_info");
-    if (profile_info) {
-    const profile = JSON.parse(profile_info);
-  if (profile?.name) {
-      setName(profile['name']);
-  }
-  if (profile?.picture) {
-      setPicture(profile['picture']);
-} }}, []);
+    try {
+      const token = localStorage.getItem("access_token");
+      setIsLoggedIn(!!token);
+
+      const profile_info = localStorage.getItem("profile_info");
+      if (profile_info) {
+        const profile = JSON.parse(profile_info);
+        if (profile?.name) {
+          setName(profile.name);
+        }
+        if (profile?.email) {
+          setEmail(profile.email);
+        }
+        if (profile?.picture) {
+          setPicture(profile.picture);
+          setImageError(false);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to parse profile_info from localStorage:", e);
+    }
+  }, []);
   const theme = useAnalyticsStore((state) => state.theme);
   const toggleTheme = useAnalyticsStore((state) => state.toggleTheme);
   const datasets = useAnalyticsStore((state) => state.datasets);
@@ -136,19 +153,35 @@ export function Navbar() {
         <div className="w-[1px] h-6 bg-border mx-1" />
 
         {/* User profile info */}
-        <div className="flex items-center gap-2.5 pl-1.5 cursor-pointer" onClick={() => setIsProfileOpen(true)}>
-          <div className="h-9 w-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-display font-bold text-xs text-primary shadow-inner">
-            <img
-                  src={picture}
-                  alt={name || "User"}
-                  className="h-full w-full rounded-full object-cover"
-                />
+        <div
+          className="flex items-center gap-2.5 pl-1.5 cursor-pointer select-none group"
+          onClick={() => setIsProfileOpen(true)}
+        >
+          <div className="h-9 w-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-display font-bold text-xs text-primary shadow-inner overflow-hidden relative transition-transform group-hover:scale-105 shrink-0">
+            {picture && !imageError ? (
+              <img
+                src={picture}
+                alt={name || "User"}
+                referrerPolicy="no-referrer"
+                onError={() => setImageError(true)}
+                className="h-full w-full rounded-full object-cover"
+              />
+            ) : name && name !== "Guest User" ? (
+              <span>{name.charAt(0).toUpperCase()}</span>
+            ) : (
+              <User className="h-4 w-4 text-primary" />
+            )}
           </div>
           <div className="hidden sm:block text-left">
-            <div className="text-xs font-semibold leading-none text-foreground">
+            <div className="text-xs font-semibold leading-none text-foreground group-hover:text-primary transition-colors">
               {name}
             </div>
-        </div>
+            {email && (
+              <div className="text-[10px] text-muted-foreground truncate max-w-[130px] mt-0.5">
+                {email}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -176,25 +209,73 @@ export function Navbar() {
       </Dialog>
 
       {/* Profile Modal */}
-      <Dialog isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} title="Profle Popup">
-        <div className="space-y-3 font-medium">
-          <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg text-xs text-primary flex gap-2">
-            <Database className="h-4 w-4 shrink-0" />
-            <div>
-              <div className="font-semibold mb-0.5">Welcome to Report IQ!</div>
-              <p className="opacity-90 leading-normal">Everything runs 100% in browser. Start by dropping an Excel or CSV file in the Upload tab.</p>
+      <Dialog isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} title="User Profile">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3.5 p-3.5 bg-accent/40 border border-border rounded-xl">
+            <div className="h-12 w-12 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-display font-bold text-base text-primary shadow-inner overflow-hidden shrink-0">
+              {picture && !imageError ? (
+                <img
+                  src={picture}
+                  alt={name || "User"}
+                  referrerPolicy="no-referrer"
+                  onError={() => setImageError(true)}
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : name && name !== "Guest User" ? (
+                <span>{name.charAt(0).toUpperCase()}</span>
+              ) : (
+                <User className="h-6 w-6 text-primary" />
+              )}
+            </div>
+            <div className="overflow-hidden">
+              <div className="font-semibold text-foreground text-sm truncate">{name}</div>
+              {email ? (
+                <div className="text-xs text-muted-foreground truncate">{email}</div>
+              ) : (
+                <div className="text-xs text-muted-foreground">Guest User Session</div>
+              )}
             </div>
           </div>
-          <div className="p-3 bg-accent rounded-lg text-xs text-foreground/80 flex gap-2">
-            <Bell className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <div>
-              <div className="font-semibold text-foreground mb-0.5">Tip: Privacy First</div>
-              <p className="leading-normal">All parser and merge outputs stay strictly on your local machine memory. Zero data leaks.</p>
+
+          <div className="p-3 bg-accent/20 border border-border/60 rounded-lg text-xs text-muted-foreground space-y-2">
+            <div className="flex items-center justify-between">
+              <span>Account Status:</span>
+              <span className="font-medium text-foreground">
+                {isLoggedIn ? "Authenticated (Google SSO)" : "Guest Session"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Security &amp; Storage:</span>
+              <span className="font-medium text-foreground">Client-Side Memory (Zero Leaks)</span>
             </div>
           </div>
-        </div>
-        <div className="mt-6 flex justify-end">
-          <Button size="sm" onClick={() => setIsProfileOpen(false)}>Close</Button>
+
+          <div className="mt-5 flex justify-between items-center pt-2 border-t border-border">
+            {isLoggedIn ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-danger hover:bg-danger/10 flex items-center gap-1.5"
+                onClick={() => {
+                  localStorage.removeItem("access_token");
+                  localStorage.removeItem("profile_info");
+                  setName("Guest User");
+                  setEmail("");
+                  setPicture("/assets/business.png");
+                  setImageError(false);
+                  setIsLoggedIn(false);
+                  setIsProfileOpen(false);
+                  toast.info("Signed out successfully");
+                }}
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Sign Out
+              </Button>
+            ) : (
+              <div />
+            )}
+            <Button size="sm" onClick={() => setIsProfileOpen(false)}>Close</Button>
+          </div>
         </div>
       </Dialog>
 

@@ -10,10 +10,23 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     console.log(searchParams);
     
-    const token = searchParams.get("token");
-    const profile = searchParams.get("profile");
+    let token = searchParams.get("token");
+    let profile = searchParams.get("profile");
 
-    console.log(token);
+    // Fallback if token itself contained urlencoded query parameters (e.g. "?token=token=...&profile=...")
+    if (token && token.includes("profile=")) {
+      try {
+        const queryStr = token.startsWith("token=") ? token : `token=${token}`;
+        const parsed = new URLSearchParams(queryStr);
+        const innerToken = parsed.get("token");
+        const innerProfile = parsed.get("profile");
+        if (innerToken) token = innerToken;
+        if (innerProfile) profile = innerProfile;
+      } catch (err) {
+        console.error("Failed to parse nested callback params:", err);
+      }
+    }
+
     if (token) {
       localStorage.setItem("access_token", token);
       if (profile) {
