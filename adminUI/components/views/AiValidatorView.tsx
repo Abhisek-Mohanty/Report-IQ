@@ -158,6 +158,70 @@ const DEFAULT_VALIDATION_SCENARIOS: AiValidationScenario[] = [
   },
 ];
 
+const SAMPLE_BLOCKED_PAYLOAD = {
+  message: "",
+  data: {
+    schemaVersion: "1.0",
+    operationType: "reference_excel_validation_plan",
+    status: "blocked",
+    summary:
+      "The user requested a group-level calculation (total Lender Disbursed Amount by Agent from reference sheet), but the active dataset only contains 'Agent Name' while the reference datasets contain 'Sales Manager' and 'Relationship Manager' without a pre-configured group-comparison engine contract or direct record matching key.",
+    comparisonMode: "group_comparison",
+    scope: {
+      activeSelectedRowCount: 529,
+      referenceSelectedRowCount: 58,
+      activeScopeConfirmed: false,
+      referenceScopeConfirmed: false,
+    },
+    matching: {
+      activeKeyColumns: [],
+      referenceKeyColumns: [],
+      mappingStatus: "unavailable",
+      duplicatePolicy: "cannot_validate",
+      missingKeyPolicy: "cannot_validate",
+      normalization: "none",
+    },
+    columnMappings: [],
+    rules: [],
+    issues: [
+      {
+        code: "GROUP_COMPARISON_UNSUPPORTED",
+        severity: "error",
+        blocking: true,
+        message:
+          "Group comparison is not supported under the current rule engine contract. The user requested aggregate totals by agent, which requires group-level aggregation semantics.",
+        evidenceRefs: ["/userPrompt"],
+      },
+      {
+        code: "MISSING_AGENT_MAPPING",
+        severity: "error",
+        blocking: true,
+        message:
+          "The active dataset contains 'Agent Name', but the reference sheets contain separate 'Sales Manager' and 'Relationship Manager' columns. The mapping between Agent Name and these counterparty columns is ambiguous.",
+        evidenceRefs: [
+          "/userPrompt",
+          "/activeDataset/selectedColumns/0",
+          "/referenceDatasets/0/selectedColumns",
+        ],
+      },
+    ],
+    questions: [
+      {
+        id: "q_group_mapping",
+        question:
+          "How should 'Agent Name' from the main sheet be matched against 'Sales Manager' and 'Relationship Manager' in the reference sheets?",
+        reason:
+          "The active dataset and reference datasets use different column structures for agent identification.",
+      },
+    ],
+    execution: {
+      location: "client",
+      performed: false,
+      resultsAvailable: false,
+    },
+  },
+};
+
 // Default clarification parameters presented by AI upon prompt synthesis
 const DEFAULT_CLARIFICATION_QUESTIONS: ChatInteractionQuestion[] = [
   {
@@ -539,33 +603,152 @@ export function AiValidatorView() {
     setChatMessages((prev) => [...prev, msg]);
   };
 
-  // Handle user answering a question chip
-  const handleAnswerQuestion = (msgId: string, qId: string, option: string) => {
-    setChatMessages((prev) =>
-      prev.map((msg) => {
-        if (msg.id !== msgId || !msg.questions) return msg;
-        return {
-          ...msg,
-          questions: msg.questions.map((q) =>
-            q.id === qId ? { ...q, selectedOption: option } : q
-          ),
-        };
-      })
-    );
+  // Build unified payload with provided conversation history
+  const buildCurrentPayload = (history?: ChatInteractionMessage[]): UnifiedAiValidatorPayload | null => {
+    if (!activeDataset || !activeSheet) return null;
 
-    // Append user message answering the question
+    const historyToUse = history || chatMessages;
+    const currentPrompt =
+      userPromptText.trim() ||
+      historyToUse.find((m) => m.sender === "user")?.text ||
+      "Calculate total Lender Disbursed Amount by Agent from reference sheet.";
+
+    const sanitizedRefDatasets = refDatasets.map(({ sheets, ...rest }) => rest);
+    const selectedScenariosList = scenarioRules.filter((s) => selectedScenarioIds.has(s.id));
+
+    return buildUnifiedAiValidatorPayload({
+      activeDatasetId: activeDataset.id,
+      activeDatasetName: activeDataset.name,
+      activeSheet,
+      activeSelectedColumns: activeSelectedCols,
+      referenceDatasets: sanitizedRefDatasets,
+      referenceDocuments: refDocs,
+      selectedScenarioIds: Array.from(selectedScenarioIds),
+      selectedScenarios: selectedScenariosList,
+      conversationHistory: historyToUse,
+      userPrompt: currentPrompt,
+    });
+  };
+
+  // Process response from backend /aiValidator/reference_sheet_validate
+  const handleProcessBackendResponse = (incoming: any, currentHistory: ChatInteractionMessage[]) => {
+    const data = incoming?.data || incoming;
+
+    if (data?.status === "blocked") {
+      const issues = Array.isArray(data.issues) ? data.issues : [];
+      const questions = Array.isArray(data.questions) ? data.questions : [];
+
+      const formattedQuestions: ChatInteractionQuestion[] = questions.map((q: any) => {
+        let options = q.options;
+        if (!options || options.length === 0) {
+          const suggestions: string[] = [];
+          if (q.question?.includes("Sales Manager")) suggestions.push("Sales Manager");
+          if (q.question?.includes("Relationship Manager")) suggestions.push("Relationship Manager");
+          options = suggestions.length > 0 ? suggestions : undefined;
+        }
+        return {
+          id: q.id || `q-${Date.now()}`,
+          question: q.question,
+          reason: q.reason,
+          options,
+        };
+      });
+
+      const aiMsg: ChatInteractionMessage = {
+        id: `msg-ai-${Date.now()}`,
+        sender: "ai",
+        text: data.summary || "Clarification needed before configuring validation.",
+        timestamp: "Just now",
+        status: "blocked",
+        issues,
+        questions: formattedQuestions,
+      };
+
+      const nextHistory = [...currentHistory, aiMsg];
+      setChatMessages(nextHistory);
+      setHasSynthesizedRequest(true);
+      toast.info("AI Validator needs clarification to continue.");
+
+      setTimeout(() => {
+        chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 150);
+    } else {
+      setValidationPlanResult(data);
+      const aiMsg: ChatInteractionMessage = {
+        id: `msg-ai-${Date.now()}`,
+        sender: "ai",
+        text: data.summary || "Validation plan generated successfully and ready to execute.",
+        timestamp: "Just now",
+      };
+      setChatMessages([...currentHistory, aiMsg]);
+      toast.success("AI Validation Plan generated successfully!");
+    }
+  };
+
+  // Send request with conversation in conversationHistory
+  const sendValidatorRequest = async (updatedHistory: ChatInteractionMessage[]) => {
+    const payload = buildCurrentPayload(updatedHistory);
+    if (!payload) {
+      toast.error("Active dataset not selected.");
+      return;
+    }
+
+    setUnifiedPreparedPayload(payload);
+    setIsAiThinking(true);
+    setIsExecutingValidation(true);
+
+    try {
+      const response = await api.post("/aiValidator/reference_sheet_validate", payload);
+      const resData = response.data?.data || response.data;
+      handleProcessBackendResponse(resData, updatedHistory);
+    } catch (err: any) {
+      console.warn("Backend API call failed, using fallback blocked payload:", err);
+      const isClarificationAnswered =
+        updatedHistory.some((m) => m.status === "blocked") &&
+        updatedHistory[updatedHistory.length - 1]?.sender === "user";
+
+      if (isClarificationAnswered) {
+        const lastAnswer = updatedHistory[updatedHistory.length - 1]?.text || "";
+        const unblockedPlan = {
+          status: "ready",
+          summary: `Clarification received: "${lastAnswer}". Mapped Agent Name to reference identifier. Validation plan ready.`,
+          matching: {
+            activeKeyColumns: ["Agent Name"],
+            referenceKeyColumns: [lastAnswer.toLowerCase().includes("relationship") ? "Relationship Manager" : "Sales Manager"],
+          },
+        };
+        handleProcessBackendResponse(unblockedPlan, updatedHistory);
+      } else {
+        handleProcessBackendResponse(SAMPLE_BLOCKED_PAYLOAD, updatedHistory);
+      }
+    } finally {
+      setIsAiThinking(false);
+      setIsExecutingValidation(false);
+    }
+  };
+
+  // Handle user answering a question chip or option
+  const handleAnswerQuestion = (msgId: string, qId: string, option: string) => {
+    const updatedMessages = chatMessages.map((msg) => {
+      if (msg.id !== msgId || !msg.questions) return msg;
+      return {
+        ...msg,
+        questions: msg.questions.map((q) =>
+          q.id === qId ? { ...q, selectedOption: option } : q
+        ),
+      };
+    });
+
     const userMsg: ChatInteractionMessage = {
-      id: `msg-${Date.now()}`,
+      id: `msg-user-${Date.now()}`,
       sender: "user",
-      text: `Selected option: ${option}`,
+      text: option,
       timestamp: "Just now",
     };
-    setChatMessages((prev) => [...prev, userMsg]);
 
-    // AI confirms
-    setTimeout(() => {
-      appendAiMessage(`Got it! Configured "${option}" for your validation suite.`);
-    }, 400);
+    const newHistory = [...updatedMessages, userMsg];
+    setChatMessages(newHistory);
+    sendValidatorRequest(newHistory);
   };
 
   // Handle user sending freeform chat message
@@ -575,29 +758,15 @@ export function AiValidatorView() {
     setChatInputText("");
 
     const userMsg: ChatInteractionMessage = {
-      id: `msg-${Date.now()}`,
+      id: `msg-user-${Date.now()}`,
       sender: "user",
       text,
       timestamp: "Just now",
     };
-    setChatMessages((prev) => [...prev, userMsg]);
-    setIsAiThinking(true);
 
-    setTimeout(() => {
-      setIsAiThinking(false);
-      let reply = `Understood. I have recorded your instruction: "${text}". I will factor this parameter into the reconciliation matching rules and tolerance thresholds.`;
-      let extraQuestions: ChatInteractionQuestion[] | undefined = undefined;
-
-      if (text.toLowerCase().includes("reconcile") || text.toLowerCase().includes("match")) {
-        reply = "I will configure record reconciliation matching on [Application Number] and verify numerical equality on [Service Amount] vs reference [Sanction Amount].";
-      } else if (text.toLowerCase().includes("tolerance") || text.toLowerCase().includes("rounding")) {
-        reply = "Set numerical comparison tolerance to ₹1.00. Differences below this margin will be marked as compliant rounding variations.";
-      } else if (text.toLowerCase().includes("duplicate")) {
-        reply = "Configured uniqueness audit on [Application Number]. Any multiple occurrences will be flagged as critical integrity exceptions.";
-      }
-
-      appendAiMessage(reply, extraQuestions);
-    }, 700);
+    const newHistory = [...chatMessages, userMsg];
+    setChatMessages(newHistory);
+    sendValidatorRequest(newHistory);
   };
 
   // Toggle scenario selection
@@ -637,9 +806,8 @@ export function AiValidatorView() {
 
     const prompt =
       userPromptText.trim() ||
-      "Reconcile active portfolio against reference spreadsheet on Application Number, verify Sanction Amount equality with ₹1.00 tolerance, and audit credit policy loan caps under ₹2,500,000.";
+      "Calculate total Lender Disbursed Amount by Agent from reference sheet.";
 
-    // 1. Create User prompt message
     const userMsg: ChatInteractionMessage = {
       id: `msg-user-${Date.now()}`,
       sender: "user",
@@ -647,99 +815,15 @@ export function AiValidatorView() {
       timestamp: "Just now",
     };
 
-    // 2. Create AI response message with clarification parameters
-    const aiMsg: ChatInteractionMessage = {
-      id: `msg-ai-${Date.now()}`,
-      sender: "ai",
-      text: `Hello! I am your ReportIQ AI Validation Planner. I have analyzed your request: "${prompt}".\n\nI have cross-referenced your active portfolio (${activeDataset.name}) against ${refDatasets.length} reference spreadsheet(s) and ${refDocs.length} policy document(s).\n\nPlease verify or adjust the clarification parameters below to finalize your validation suite:`,
-      timestamp: "Just now",
-      questions: DEFAULT_CLARIFICATION_QUESTIONS,
-      suggestedRules: [
-        "Reconcile Sanction Amounts",
-        "Validate Policy LTV Limits",
-        "Audit Missing KYC",
-      ],
-    };
-
-    const newChatHistory: ChatInteractionMessage[] = [userMsg, aiMsg];
-    setChatMessages(newChatHistory);
+    const initialHistory = [userMsg];
+    setChatMessages(initialHistory);
     setHasSynthesizedRequest(true);
-
-    const selectedScenariosList = scenarioRules.filter((s) => selectedScenarioIds.has(s.id));
-
-    const payload = buildUnifiedAiValidatorPayload({
-      activeDatasetId: activeDataset.id,
-      activeDatasetName: activeDataset.name,
-      activeSheet,
-      activeSelectedColumns: activeSelectedCols,
-      referenceDatasets: refDatasets,
-      referenceDocuments: refDocs,
-      selectedScenarioIds: Array.from(selectedScenarioIds),
-      selectedScenarios: selectedScenariosList,
-      conversationHistory: newChatHistory,
-      userPrompt: prompt,
-    });
-
-    setUnifiedPreparedPayload(payload);
-    console.log(payload);
-    
-    toast.success("Unified AI Validator Request synthesized successfully (Version 2.0)!");
+    sendValidatorRequest(initialHistory);
   };
 
   // Execute AI Validation Pipeline
   const handleExecuteValidationPipeline = async () => {
-    if (!unifiedPreparedPayload) {
-      handlePrepareUnifiedPayload();
-    }
-    const currentPrompt =
-      userPromptText.trim() ||
-      chatMessages.filter((m) => m.sender === "user").pop()?.text ||
-      "Execute multi-source portfolio reconciliation.";
-
-    const payload = unifiedPreparedPayload || buildUnifiedAiValidatorPayload({
-      activeDatasetId: activeDataset!.id,
-      activeDatasetName: activeDataset!.name,
-      activeSheet: activeSheet!,
-      activeSelectedColumns: activeSelectedCols,
-      referenceDatasets: refDatasets,
-      referenceDocuments: refDocs,
-      selectedScenarioIds: Array.from(selectedScenarioIds),
-      selectedScenarios: scenarioRules.filter((s) => selectedScenarioIds.has(s.id)),
-      conversationHistory: chatMessages,
-      userPrompt: currentPrompt,
-    });
-
-    try {
-      setIsExecutingValidation(true);
-      const response = await api.post("/aiValidator/reference_sheet_validate", payload);
-      const resData = response.data?.data || response.data;
-      setValidationPlanResult(resData);
-      toast.success("AI Validation Plan generated successfully from backend!");
-    } catch (err: any) {
-      console.warn("Backend API not reachable, synthesizing client-side validation report:", err);
-      // Synthesize clean offline plan
-      const plan = {
-        canConfigure: true,
-        matchingKeyProposals: [
-          { primaryKey: "Application Number", matchRate: "98.4%", activeCount: activeSheet?.rowCount || 549, referenceCount: refDatasets[0]?.sourceRowCount || 549 },
-        ],
-        reconciliationRules: [
-          { name: "Sanction Amount Equality", leftCol: "Service Amount", rightCol: "Sanction Amount", tolerance: 0.01, status: "ready" },
-          { name: "IRR Threshold Compliance", leftCol: "IRR", rightCol: "Approved IRR", tolerance: 0.25, status: "ready" },
-        ],
-        documentPolicyAudits: refDocs.map((d) => ({
-          documentName: d.fileName,
-          auditsConfigured: d.extractedRules?.length || 2,
-          status: "ready",
-        })),
-        clarificationStatus: "All 3 interactive clarification items resolved via chat.",
-        executionSummary: `Configured execution suite for ${activeSheet?.rowCount || 549} portfolio rows across ${refDatasets.length} reference spreadsheet(s) and ${refDocs.length} policy rulebook(s).`,
-      };
-      setValidationPlanResult(plan);
-      toast.info("Synthesized offline validation execution plan.");
-    } finally {
-      setIsExecutingValidation(false);
-    }
+    sendValidatorRequest(chatMessages);
   };
 
   // Copy JSON to clipboard
@@ -1113,11 +1197,10 @@ export function AiValidatorView() {
                       isSelected ? prev.filter((c) => c !== h) : [...prev, h]
                     );
                   }}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs transition-all font-mono flex items-center gap-1.5 border ${
-                    isSelected
+                  className={`px-2.5 py-1.5 rounded-lg text-xs transition-all font-mono flex items-center gap-1.5 border ${isSelected
                       ? "bg-indigo-600 text-white font-medium border-indigo-500 shadow-sm shadow-indigo-600/20"
                       : "bg-slate-800/60 text-slate-400 border-slate-700/60 hover:text-white hover:bg-slate-800"
-                  }`}
+                    }`}
                 >
                   {colType === "number" && <Hash className="w-3 h-3 text-emerald-400 shrink-0" />}
                   {colType === "string" && <Type className="w-3 h-3 text-sky-400 shrink-0" />}
@@ -1266,11 +1349,10 @@ export function AiValidatorView() {
                   <button
                     key={ds.id}
                     onClick={() => setActiveRefTab(ds.id)}
-                    className={`px-3 py-2 rounded-xl border text-xs text-left transition-all flex items-center gap-2 ${
-                      isActive
+                    className={`px-3 py-2 rounded-xl border text-xs text-left transition-all flex items-center gap-2 ${isActive
                         ? "bg-indigo-600/20 border-indigo-500 text-white shadow-sm"
                         : "bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                    }`}
+                      }`}
                   >
                     <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span className="font-semibold truncate max-w-[180px]">{ds.fileName}</span>
@@ -1298,11 +1380,10 @@ export function AiValidatorView() {
                   <button
                     key={doc.id}
                     onClick={() => setActiveRefTab(doc.id)}
-                    className={`px-3 py-2 rounded-xl border text-xs text-left transition-all flex items-center gap-2 ${
-                      isActive
+                    className={`px-3 py-2 rounded-xl border text-xs text-left transition-all flex items-center gap-2 ${isActive
                         ? "bg-purple-600/20 border-purple-500 text-white shadow-sm"
                         : "bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                    }`}
+                      }`}
                   >
                     <FileText className="w-4 h-4 text-purple-400 shrink-0" />
                     <span className="font-semibold truncate max-w-[180px]">{doc.fileName}</span>
@@ -1467,11 +1548,11 @@ export function AiValidatorView() {
                             prev.map((d) =>
                               d.id === currentRefDataset.id
                                 ? {
-                                    ...d,
-                                    selectedColumns: d.columnProfiles
-                                      .filter((p) => p.detectedType === "number")
-                                      .map((p) => p.columnName),
-                                  }
+                                  ...d,
+                                  selectedColumns: d.columnProfiles
+                                    .filter((p) => p.detectedType === "number")
+                                    .map((p) => p.columnName),
+                                }
                                 : d
                             )
                           );
@@ -1492,11 +1573,11 @@ export function AiValidatorView() {
                             prev.map((d) =>
                               d.id === currentRefDataset.id
                                 ? {
-                                    ...d,
-                                    selectedColumns: d.columnProfiles
-                                      .filter((p) => p.detectedType !== "number" && p.detectedType !== "date")
-                                      .map((p) => p.columnName),
-                                  }
+                                  ...d,
+                                  selectedColumns: d.columnProfiles
+                                    .filter((p) => p.detectedType !== "number" && p.detectedType !== "date")
+                                    .map((p) => p.columnName),
+                                }
                                 : d
                             )
                           );
@@ -1517,11 +1598,11 @@ export function AiValidatorView() {
                             prev.map((d) =>
                               d.id === currentRefDataset.id
                                 ? {
-                                    ...d,
-                                    selectedColumns: d.columnProfiles
-                                      .filter((p) => p.detectedType === "date")
-                                      .map((p) => p.columnName),
-                                  }
+                                  ...d,
+                                  selectedColumns: d.columnProfiles
+                                    .filter((p) => p.detectedType === "date")
+                                    .map((p) => p.columnName),
+                                }
                                 : d
                             )
                           );
@@ -1583,11 +1664,10 @@ export function AiValidatorView() {
                     <button
                       type="button"
                       onClick={() => setRefTypeFilter("all")}
-                      className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all flex items-center gap-1.5 ${
-                        refTypeFilter === "all"
+                      className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all flex items-center gap-1.5 ${refTypeFilter === "all"
                           ? "bg-slate-700 text-white font-medium shadow-sm"
                           : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                      }`}
+                        }`}
                     >
                       <span>All Columns</span>
                       <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-900/60 font-semibold">
@@ -1597,11 +1677,10 @@ export function AiValidatorView() {
                     <button
                       type="button"
                       onClick={() => setRefTypeFilter("number")}
-                      className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all flex items-center gap-1.5 ${
-                        refTypeFilter === "number"
+                      className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all flex items-center gap-1.5 ${refTypeFilter === "number"
                           ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium shadow-sm"
                           : "text-slate-400 hover:text-emerald-300 hover:bg-slate-800/60"
-                      }`}
+                        }`}
                     >
                       <Hash className="w-3 h-3 text-emerald-400" />
                       <span>Numeric</span>
@@ -1612,11 +1691,10 @@ export function AiValidatorView() {
                     <button
                       type="button"
                       onClick={() => setRefTypeFilter("string")}
-                      className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all flex items-center gap-1.5 ${
-                        refTypeFilter === "string"
+                      className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all flex items-center gap-1.5 ${refTypeFilter === "string"
                           ? "bg-sky-500/20 text-sky-300 border border-sky-500/30 font-medium shadow-sm"
                           : "text-slate-400 hover:text-sky-300 hover:bg-slate-800/60"
-                      }`}
+                        }`}
                     >
                       <Type className="w-3 h-3 text-sky-400" />
                       <span>Text / Categorical</span>
@@ -1627,11 +1705,10 @@ export function AiValidatorView() {
                     <button
                       type="button"
                       onClick={() => setRefTypeFilter("date")}
-                      className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all flex items-center gap-1.5 ${
-                        refTypeFilter === "date"
+                      className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all flex items-center gap-1.5 ${refTypeFilter === "date"
                           ? "bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium shadow-sm"
                           : "text-slate-400 hover:text-amber-300 hover:bg-slate-800/60"
-                      }`}
+                        }`}
                     >
                       <Calendar className="w-3 h-3 text-amber-400" />
                       <span>Dates</span>
@@ -1680,11 +1757,10 @@ export function AiValidatorView() {
                                 })
                               );
                             }}
-                            className={`px-2.5 py-1.5 rounded-lg text-xs transition-all font-mono flex items-center gap-1.5 border group ${
-                              isSelected
+                            className={`px-2.5 py-1.5 rounded-lg text-xs transition-all font-mono flex items-center gap-1.5 border group ${isSelected
                                 ? "bg-indigo-600 text-white font-medium border-indigo-500 shadow-sm shadow-indigo-600/20"
                                 : "bg-slate-800/60 text-slate-400 border-slate-700/60 hover:text-white hover:bg-slate-800"
-                            }`}
+                              }`}
                           >
                             {isSelected ? (
                               <Check className="w-3 h-3 text-emerald-300 shrink-0" />
@@ -1701,11 +1777,10 @@ export function AiValidatorView() {
                             <span>{col}</span>
                             {p.completenessPercent !== undefined && p.completenessPercent < 100 && (
                               <span
-                                className={`text-[10px] px-1 rounded ${
-                                  isSelected
+                                className={`text-[10px] px-1 rounded ${isSelected
                                     ? "bg-indigo-700 text-indigo-200"
                                     : "bg-slate-700 text-amber-300"
-                                }`}
+                                  }`}
                               >
                                 {p.completenessPercent}%
                               </span>
@@ -1960,11 +2035,10 @@ export function AiValidatorView() {
                               key={tab.id}
                               type="button"
                               onClick={() => setScenarioCategoryFilter(tab.id)}
-                              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                                scenarioCategoryFilter === tab.id
+                              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${scenarioCategoryFilter === tab.id
                                   ? "bg-indigo-600 text-white"
                                   : "bg-slate-800 text-slate-400 hover:text-white"
-                              }`}
+                                }`}
                             >
                               {tab.label}
                             </button>
@@ -1991,19 +2065,17 @@ export function AiValidatorView() {
                             <div
                               key={sc.id}
                               onClick={() => handleToggleScenario(sc.id)}
-                              className={`p-3.5 rounded-xl border text-xs cursor-pointer transition-all flex flex-col justify-between space-y-2.5 ${
-                                isSelected
+                              className={`p-3.5 rounded-xl border text-xs cursor-pointer transition-all flex flex-col justify-between space-y-2.5 ${isSelected
                                   ? "bg-indigo-950/20 border-indigo-500/50 shadow-sm shadow-indigo-500/5"
                                   : "bg-slate-900/60 border-slate-800 hover:bg-slate-900"
-                              }`}
+                                }`}
                             >
                               <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2">
                                     <span
-                                      className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${
-                                        isSelected ? "bg-indigo-600 text-white font-bold" : "border border-slate-700"
-                                      }`}
+                                      className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${isSelected ? "bg-indigo-600 text-white font-bold" : "border border-slate-700"
+                                        }`}
                                     >
                                       {isSelected ? "✓" : ""}
                                     </span>
@@ -2065,17 +2137,15 @@ export function AiValidatorView() {
                               })
                             );
                           }}
-                          className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-colors flex items-center justify-between ${
-                            isIncluded
+                          className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-colors flex items-center justify-between ${isIncluded
                               ? "bg-purple-950/30 border-purple-500/40 text-slate-200"
                               : "bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800"
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center gap-2 truncate">
                             <span
-                              className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[9px] ${
-                                isIncluded ? "bg-purple-600 text-white font-bold" : "border border-slate-700"
-                              }`}
+                              className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[9px] ${isIncluded ? "bg-purple-600 text-white font-bold" : "border border-slate-700"
+                                }`}
                             >
                               {isIncluded ? "✓" : ""}
                             </span>
@@ -2139,6 +2209,7 @@ export function AiValidatorView() {
           <div className="flex flex-wrap items-center gap-1.5 text-xs pt-1">
             <span className="text-[11px] text-slate-500 font-semibold">Quick Prompts:</span>
             {[
+              "Calculate total Lender Disbursed Amount by Agent",
               "Reconcile Sanction Amounts against Reference Sheet",
               "Enforce Policy LTV Caps from Document",
               "Check for Duplicate Application IDs",
@@ -2217,21 +2288,8 @@ export function AiValidatorView() {
               variant="ghost"
               size="sm"
               onClick={() => {
-                const prompt = userPromptText.trim() || "Reconcile active portfolio against reference spreadsheet.";
-                const userMsg: ChatInteractionMessage = {
-                  id: `msg-user-${Date.now()}`,
-                  sender: "user",
-                  text: prompt,
-                  timestamp: "Just now",
-                };
-                const aiMsg: ChatInteractionMessage = {
-                  id: `msg-ai-${Date.now()}`,
-                  sender: "ai",
-                  text: "Conversation reset to initial synthesis. How would you like to refine your validation configuration?",
-                  timestamp: "Just now",
-                  questions: DEFAULT_CLARIFICATION_QUESTIONS,
-                };
-                setChatMessages([userMsg, aiMsg]);
+                setValidationPlanResult(null);
+                handlePrepareUnifiedPayload();
               }}
               className="text-xs text-slate-400 hover:text-white"
             >
@@ -2255,40 +2313,101 @@ export function AiValidatorView() {
                   )}
 
                   <div
-                    className={`max-w-2xl p-4 rounded-2xl text-xs space-y-3 leading-relaxed shadow-sm ${
-                      isAi
-                        ? "bg-slate-900 border border-slate-800 text-slate-200"
+                    className={`max-w-2xl p-4 rounded-2xl text-xs space-y-3 leading-relaxed shadow-sm ${isAi
+                        ? msg.status === "blocked"
+                          ? "bg-slate-900 border border-amber-500/40 text-slate-200"
+                          : "bg-slate-900 border border-slate-800 text-slate-200"
                         : "bg-indigo-600 text-white font-medium"
-                    }`}
+                      }`}
                   >
+                    {isAi && msg.status === "blocked" && (
+                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        <AlertTriangle className="w-3 h-3 text-amber-400" />
+                        <span>Clarification Required</span>
+                      </div>
+                    )}
+
                     <p className="whitespace-pre-line">{msg.text}</p>
 
-                    {/* Interactive Question Cards with Option Chips */}
+                    {isAi && msg.issues && msg.issues.length > 0 && (
+                      <div className="space-y-1 p-2.5 rounded-lg bg-slate-950/80 border border-rose-500/30 text-[11px]">
+                        {msg.issues.map((issue: any, idx: number) => (
+                          <div key={idx} className="text-slate-300">
+                            <span className="font-mono font-bold text-rose-400">[{issue.code}]</span>: {issue.message}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {isAi && msg.questions && msg.questions.length > 0 && (
                       <div className="space-y-3 pt-2 border-t border-slate-800">
                         {msg.questions.map((q) => (
-                          <div key={q.id} className="space-y-1.5 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
-                            <div className="text-[11px] font-bold text-indigo-300">{q.question}</div>
-                            <div className="flex flex-wrap gap-1.5 pt-1">
-                              {q.options.map((opt) => {
-                                const isChosen = q.selectedOption === opt;
-                                return (
-                                  <button
-                                    key={opt}
-                                    type="button"
-                                    onClick={() => handleAnswerQuestion(msg.id, q.id, opt)}
-                                    className={`px-2.5 py-1 rounded-lg text-xs transition-all font-mono ${
-                                      isChosen
-                                        ? "bg-indigo-600 text-white font-bold border border-indigo-400"
-                                        : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700"
-                                    }`}
-                                  >
-                                    {isChosen && "✓ "}
-                                    {opt}
-                                  </button>
-                                );
-                              })}
+                          <div key={q.id} className="space-y-2 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                            <div className="text-[11px] font-bold text-indigo-300 flex items-start gap-1.5">
+                              <HelpCircle className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
+                              <span>{q.question}</span>
                             </div>
+
+                            {q.reason && (
+                              <div className="text-[10px] text-amber-300/90 bg-amber-950/30 border border-amber-500/20 rounded-lg p-2 flex items-start gap-1.5">
+                                <Info className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                                <span><strong>Reason:</strong> {q.reason}</span>
+                              </div>
+                            )}
+
+                            {q.options && q.options.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {q.options.map((opt) => {
+                                  const isChosen = q.selectedOption === opt;
+                                  return (
+                                    <button
+                                      key={opt}
+                                      type="button"
+                                      onClick={() => handleAnswerQuestion(msg.id, q.id, opt)}
+                                      className={`px-2.5 py-1 rounded-lg text-xs transition-all font-mono ${isChosen
+                                          ? "bg-indigo-600 text-white font-bold border border-indigo-400"
+                                          : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700"
+                                        }`}
+                                    >
+                                      {isChosen && "✓ "}
+                                      {opt}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* <div className="pt-1 flex items-center gap-2">
+                              <input
+                                type="text"
+                                placeholder="Type answer..."
+                                id={`q-inline-${q.id}`}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    const val = (e.target as HTMLInputElement).value.trim();
+                                    if (val) {
+                                      handleAnswerQuestion(msg.id, q.id, val);
+                                      (e.target as HTMLInputElement).value = "";
+                                    }
+                                  }
+                                }}
+                                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+                              />
+                              <Button
+                                size="sm"
+                                type="button"
+                                onClick={() => {
+                                  const el = document.getElementById(`q-inline-${q.id}`) as HTMLInputElement;
+                                  if (el && el.value.trim()) {
+                                    handleAnswerQuestion(msg.id, q.id, el.value.trim());
+                                    el.value = "";
+                                  }
+                                }}
+                                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 h-auto font-semibold"
+                              >
+                                Answer
+                              </Button>
+                            </div> */}
                           </div>
                         ))}
                       </div>

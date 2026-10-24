@@ -313,7 +313,7 @@ export function buildUnifiedAiValidatorPayload(params: {
       columnProfiles: activeProfiles,
       exampleRows: activeExamples,
     },
-    referenceDatasets,
+    referenceDatasets: referenceDatasets.map(({ sheets, ...rest }) => ({ ...rest })),
     referenceDocuments,
     selectedScenarioIds,
     selectedScenarios,

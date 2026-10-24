@@ -186,7 +186,8 @@ export interface ReferenceDocumentEntry {
 export interface ChatInteractionQuestion {
   id: string;
   question: string;
-  options: string[];
+  reason?: string;
+  options?: string[];
   selectedOption?: string;
 }
 
@@ -197,6 +198,8 @@ export interface ChatInteractionMessage {
   timestamp: string;
   questions?: ChatInteractionQuestion[];
   suggestedRules?: string[];
+  status?: string;
+  issues?: any[];
 }
 
 /**
