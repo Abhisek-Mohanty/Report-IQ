@@ -84,7 +84,7 @@ export function Navbar() {
       </div>
 
       {/* Center Search Bar */}
-      <div className="relative max-w-sm w-full mx-4">
+      {/* <div className="relative max-w-sm w-full mx-4">
         <div className="relative flex items-center">
           <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
           <input
@@ -96,10 +96,10 @@ export function Navbar() {
             onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
             className="w-full bg-accent/40 text-foreground border border-border rounded-lg pl-9 pr-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all font-medium"
           />
-        </div>
+        </div> */}
 
-        {/* Search Results Dropdown */}
-        {isSearchFocused && searchQuery && (
+      {/* Search Results Dropdown */}
+      {/* {isSearchFocused && searchQuery && (
           <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto z-[60] p-1 glass-panel-heavy">
             {filteredDatasets.length > 0 ? (
               filteredDatasets.map((d) => (
@@ -117,7 +117,7 @@ export function Navbar() {
             )}
           </div>
         )}
-      </div>
+      </div> */}
 
       {/* Right Controls */}
       <div className="flex items-center gap-2">
@@ -176,11 +176,11 @@ export function Navbar() {
             <div className="text-xs font-semibold leading-none text-foreground group-hover:text-primary transition-colors">
               {name}
             </div>
-            {email && (
+            {/* {email && (
               <div className="text-[10px] text-muted-foreground truncate max-w-[130px] mt-0.5">
                 {email}
               </div>
-            )}
+            )} */}
           </div>
         </div>
       </div>

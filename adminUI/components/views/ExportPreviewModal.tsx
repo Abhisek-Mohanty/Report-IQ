@@ -2,24 +2,24 @@
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { SheetData, DatasetStats } from "@/types";
-import { 
-  ExportFormatDefinition, 
-  ExportOptions, 
-  generateExportPayload, 
-  triggerFileDownload 
+import {
+  ExportFormatDefinition,
+  ExportOptions,
+  generateExportPayload,
+  triggerFileDownload
 } from "@/utils/exportConverters";
-import { 
-  X, 
-  Download, 
-  Copy, 
-  Check, 
-  Eye, 
-  Code2, 
-  FileSpreadsheet, 
-  FileText, 
-  Layers, 
-  Sparkles, 
-  CheckCircle2, 
+import {
+  X,
+  Download,
+  Copy,
+  Check,
+  Eye,
+  Code2,
+  FileSpreadsheet,
+  FileText,
+  Layers,
+  Sparkles,
+  CheckCircle2,
   AlertCircle,
   ZoomIn,
   ZoomOut,
@@ -62,7 +62,7 @@ export function ExportPreviewModal({
   const [latexDocument, setLatexDocument] = useState<boolean>(true);
   const [imageTheme, setImageTheme] = useState<"dark" | "light">("dark");
   const [imageScale, setImageScale] = useState<number>(2);
-  
+
   // Custom filename
   const defaultBaseName = `${datasetName.replace(/\.[^/.]+$/, "")}_${sheet.name}`;
   const [customFileName, setCustomFileName] = useState<string>(`${defaultBaseName}${format.extension}`);
@@ -228,11 +228,11 @@ export function ExportPreviewModal({
   }, [currentBlob]);
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
       onClick={onClose}
     >
-      <div 
+      <div
         className="relative w-full max-w-6xl h-[92vh] flex flex-col bg-card border border-border rounded-2xl shadow-2xl overflow-hidden glass-panel-heavy"
         onClick={(e) => e.stopPropagation()}
       >
@@ -364,17 +364,15 @@ export function ExportPreviewModal({
               <div className="flex rounded-lg border border-border p-0.5 bg-background">
                 <button
                   onClick={() => setHtmlMode("rendered")}
-                  className={`px-2.5 py-0.5 rounded-md font-semibold ${
-                    htmlMode === "rendered" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                  }`}
+                  className={`px-2.5 py-0.5 rounded-md font-semibold ${htmlMode === "rendered" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                    }`}
                 >
                   Live Web Page
                 </button>
                 <button
                   onClick={() => setHtmlMode("source")}
-                  className={`px-2.5 py-0.5 rounded-md font-semibold ${
-                    htmlMode === "source" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                  }`}
+                  className={`px-2.5 py-0.5 rounded-md font-semibold ${htmlMode === "source" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                    }`}
                 >
                   HTML Source
                 </button>
@@ -386,17 +384,15 @@ export function ExportPreviewModal({
               <div className="flex rounded-lg border border-border p-0.5 bg-background">
                 <button
                   onClick={() => setBinaryTab("schema")}
-                  className={`px-2.5 py-0.5 rounded-md font-semibold ${
-                    binaryTab === "schema" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                  }`}
+                  className={`px-2.5 py-0.5 rounded-md font-semibold ${binaryTab === "schema" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                    }`}
                 >
                   Column Schema
                 </button>
                 <button
                   onClick={() => setBinaryTab("hex")}
-                  className={`px-2.5 py-0.5 rounded-md font-semibold ${
-                    binaryTab === "hex" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                  }`}
+                  className={`px-2.5 py-0.5 rounded-md font-semibold ${binaryTab === "hex" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                    }`}
                 >
                   Hex Stream View
                 </button>

@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, ShieldCheck, Check, Brain, ArrowRight } from "lucide-react";
+import { X, Sparkles, ShieldCheck, Check, Brain, ArrowRight, ShieldEllipsis } from "lucide-react";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -10,11 +10,29 @@ interface LoginModalProps {
   redirectUrl?: string;
 }
 
+const LOGIN_IMAGES = [
+  "/assets/login/karsten-winegeart-oU6KZTXhuvk-unsplash.jpg",
+  "/assets/login/aida-sam-xcPhazGutBM-unsplash-1.jpg",
+  "/assets/login/insung-yoon-6fA3wftnmGc-unsplash.jpg",
+  "/assets/login/hpphotoretouch-highlighted-light-10529756_1280.jpg",
+  "/assets/login/georgii-eletskikh-_9eyDZzJdeI-unsplash.jpg",
+];
+
 export function LoginModal({
   isOpen,
   onClose,
   redirectUrl = "http://localhost:8000/api/v1/auth/google",
 }: LoginModalProps) {
+  const [loginImage, setLoginImage] = React.useState(LOGIN_IMAGES[0]);
+
+  // Pick random image on modal open
+  useEffect(() => {
+    if (isOpen) {
+      const randomIndex = Math.floor(Math.random() * LOGIN_IMAGES.length);
+      setLoginImage(LOGIN_IMAGES[randomIndex]);
+    }
+  }, [isOpen]);
+
   // Close on Escape key press
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -46,7 +64,7 @@ export function LoginModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/75 backdrop-blur-md"
+            className="absolute inset-0 bg-black/75"
           />
 
           {/* Modal Container */}
@@ -60,16 +78,23 @@ export function LoginModal({
             {/* =================================================================
                 LEFT SIDE: ARTWORK & VISUAL SHOWCASE
                ================================================================= */}
-            <div className="relative w-full md:w-5/12 h-56 md:h-auto overflow-hidden bg-slate-900 flex flex-col justify-between p-6">
+            <div className="relative w-full md:w-6/12 h-56 md:h-auto overflow-hidden bg-slate-900 flex flex-col justify-between p-6">
               {/* Background Art Image */}
               <img
-                src="/assets/login-art.jpg"
+                key={loginImage}
+                src={loginImage}
                 alt="Report IQ AI Intelligence"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (target.src.includes("/assets/login/")) {
+                    target.src = target.src.replace("/assets/login/", "/login/");
+                  }
+                }}
                 className="absolute inset-0 w-full h-full object-cover object-center scale-105 transition-transform duration-700 hover:scale-110"
               />
 
               {/* Gradient Overlays for Readability & Depth */}
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+              <div className="absolute inset-0 from-slate-950 via-slate-950/40 to-transparent" />
               <div className="absolute inset-0 bg-gradient-to-r from-slate-950/30 to-transparent" />
               <div className="absolute inset-0 bg-indigo-950/20 mix-blend-overlay" />
 
@@ -78,13 +103,13 @@ export function LoginModal({
                 <div className="w-8 h-8 rounded-xl bg-indigo-600/90 backdrop-blur-md border border-indigo-400/30 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30">
                   <Brain className="w-4 h-4" />
                 </div>
-                <div className="px-2.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-slate-700/60 text-[11px] font-semibold text-slate-200">
-                  Report IQ Suite
-                </div>
+                {/* <div className="px-2.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-slate-700/60 text-[11px] font-semibold text-slate-200">
+                  Report IQ
+                </div> */}
               </div>
 
               {/* Bottom Glass Card: Value Props */}
-              <div className="relative z-10 space-y-2 p-3.5 rounded-2xl bg-slate-950/80 backdrop-blur-md border border-white/10 shadow-lg">
+              {/* <div className="relative z-10 space-y-2 p-3.5 rounded-2xl bg-slate-900/80 backdrop-blur-md border border-white/10 shadow-lg">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-white">
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                   <span>Next-Gen Financial AI</span>
@@ -96,13 +121,13 @@ export function LoginModal({
                   <span>&bull; Real-time AI</span>
                   <span>&bull; Local Data Privacy</span>
                 </div>
-              </div>
+              </div> */}
             </div>
 
             {/* =================================================================
                 RIGHT SIDE: LOGIN CONTENT & GOOGLE AUTH BUTTON
                ================================================================= */}
-            <div className="w-full md:w-7/12 p-8 sm:p-10 flex flex-col justify-between bg-slate-950 relative">
+            <div className="w-full md:w-7/12 p-8 sm:p-10 flex flex-col justify-between bg-slate-900 relative">
               {/* Close Button */}
               <button
                 onClick={onClose}
@@ -115,8 +140,8 @@ export function LoginModal({
               {/* Top Title & Info */}
               <div className="space-y-4 pt-1">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-medium">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Authentication Required</span>
+                  <ShieldEllipsis className="w-3.5 h-3.5" />
+                  <span className="text-white">Made By Mohanty</span><span>Product</span>
                 </div>
 
                 <div className="space-y-1.5">

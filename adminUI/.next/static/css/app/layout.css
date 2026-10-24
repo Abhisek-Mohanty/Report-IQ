@@ -2699,6 +2699,10 @@ body{
   --tw-shadow-color: rgb(255 255 255 / 0.05);
   --tw-shadow: var(--tw-shadow-colored);
 }
+.shadow-slate-900\/50{
+  --tw-shadow-color: rgb(15 23 42 / 0.5);
+  --tw-shadow: var(--tw-shadow-colored);
+}
 .outline-none{
   outline: 2px solid transparent;
   outline-offset: 2px;
@@ -3436,6 +3440,10 @@ body{
 
   .md\:w-7\/12{
     width: 58.333333%;
+  }
+
+  .md\:w-6\/12{
+    width: 50%;
   }
 
   .md\:max-w-\[190px\]{

@@ -5,32 +5,32 @@ import { useAnalyticsStore } from "@/store/useAnalyticsStore";
 import { analyzeDataset } from "@/utils/dataOperations";
 import { toast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
-import { 
-  EXPORT_FORMATS, 
-  ExportFormatDefinition, 
+import {
+  EXPORT_FORMATS,
+  ExportFormatDefinition,
   ExportFormatCategory,
   generateExportPayload,
-  triggerFileDownload 
+  triggerFileDownload
 } from "@/utils/exportConverters";
 import { ExportPreviewModal } from "./ExportPreviewModal";
-import { 
-  Download, 
-  Search, 
-  Eye, 
-  FileSpreadsheet, 
-  FileText, 
-  FileCode, 
-  Database, 
-  Table, 
-  CheckCircle, 
-  Sparkles, 
-  SlidersHorizontal, 
-  Layers, 
-  HardDrive, 
-  Image as ImageIcon, 
-  Globe, 
-  Braces, 
-  BookOpen, 
+import {
+  Download,
+  Search,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  FileCode,
+  Database,
+  Table,
+  CheckCircle,
+  Sparkles,
+  SlidersHorizontal,
+  Layers,
+  HardDrive,
+  Image as ImageIcon,
+  Globe,
+  Braces,
+  BookOpen,
   ArrowRight,
   Filter,
   CheckCircle2,
@@ -78,7 +78,7 @@ export function ExportView() {
     return EXPORT_FORMATS.filter((fmt) => {
       const matchesCategory = selectedCategory === "all" || fmt.category === selectedCategory;
       const q = searchQuery.toLowerCase().trim();
-      const matchesSearch = 
+      const matchesSearch =
         !q ||
         fmt.name.toLowerCase().includes(q) ||
         fmt.extension.toLowerCase().includes(q) ||
@@ -316,11 +316,10 @@ export function ExportView() {
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full text-xs font-semibold scrollbar-thin">
           <button
             onClick={() => setSelectedCategory("all")}
-            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${
-              selectedCategory === "all"
+            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${selectedCategory === "all"
                 ? "bg-primary text-primary-foreground border-primary shadow-sm"
                 : "bg-card border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
+              }`}
           >
             <span>All Formats</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/20">
@@ -330,11 +329,10 @@ export function ExportView() {
 
           <button
             onClick={() => setSelectedCategory("spreadsheets")}
-            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${
-              selectedCategory === "spreadsheets"
+            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${selectedCategory === "spreadsheets"
                 ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
                 : "bg-card border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
+              }`}
           >
             <FileSpreadsheet className="h-3.5 w-3.5" />
             <span>Spreadsheets</span>
@@ -345,11 +343,10 @@ export function ExportView() {
 
           <button
             onClick={() => setSelectedCategory("documents")}
-            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${
-              selectedCategory === "documents"
+            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${selectedCategory === "documents"
                 ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                 : "bg-card border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
+              }`}
           >
             <FileText className="h-3.5 w-3.5" />
             <span>Documents</span>
@@ -360,11 +357,10 @@ export function ExportView() {
 
           <button
             onClick={() => setSelectedCategory("flat")}
-            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${
-              selectedCategory === "flat"
+            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${selectedCategory === "flat"
                 ? "bg-cyan-600 text-white border-cyan-600 shadow-sm"
                 : "bg-card border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
+              }`}
           >
             <FileCode className="h-3.5 w-3.5" />
             <span>Flat Text</span>
@@ -375,11 +371,10 @@ export function ExportView() {
 
           <button
             onClick={() => setSelectedCategory("code")}
-            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${
-              selectedCategory === "code"
+            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${selectedCategory === "code"
                 ? "bg-amber-600 text-white border-amber-600 shadow-sm"
                 : "bg-card border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
+              }`}
           >
             <Braces className="h-3.5 w-3.5" />
             <span>Data & Code</span>
@@ -390,11 +385,10 @@ export function ExportView() {
 
           <button
             onClick={() => setSelectedCategory("databases")}
-            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${
-              selectedCategory === "databases"
+            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${selectedCategory === "databases"
                 ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                 : "bg-card border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
+              }`}
           >
             <Database className="h-3.5 w-3.5" />
             <span>Databases</span>
@@ -405,11 +399,10 @@ export function ExportView() {
 
           <button
             onClick={() => setSelectedCategory("bigdata")}
-            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${
-              selectedCategory === "bigdata"
+            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${selectedCategory === "bigdata"
                 ? "bg-purple-600 text-white border-purple-600 shadow-sm"
                 : "bg-card border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
+              }`}
           >
             <Layers className="h-3.5 w-3.5" />
             <span>Big Data</span>
@@ -420,11 +413,10 @@ export function ExportView() {
 
           <button
             onClick={() => setSelectedCategory("images")}
-            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${
-              selectedCategory === "images"
+            className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 ${selectedCategory === "images"
                 ? "bg-teal-600 text-white border-teal-600 shadow-sm"
                 : "bg-card border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
+              }`}
           >
             <ImageIcon className="h-3.5 w-3.5" />
             <span>Images</span>

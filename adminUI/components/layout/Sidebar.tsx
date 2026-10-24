@@ -49,7 +49,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   
   // AI Insights placeholders
   { id: "ai-insights", name: "AI Insights", icon: BrainCog, category: "ai", requiresAuth: true },
-  { id: "ai-validator", name: "AI Report Validator", icon: MonitorCheck, category: "ai", requiresAuth: false },
+  { id: "ai-validator", name: "AI Report Validator", icon: MonitorCheck, category: "ai", requiresAuth: true },
   { id: "ai-chat", name: "AI Copilot Chat", icon: MessageSquareCode, category: "ai", requiresAuth: true },
   { id: "ai-query", name: "AI Query Agent", icon: SearchCode, category: "ai", requiresAuth: true },
   { id: "ai-report", name: "AI Report Builder", icon: FileHeart, category: "ai", requiresAuth: true },
