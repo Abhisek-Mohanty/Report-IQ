@@ -317,3 +317,45 @@ export interface ValidationSuiteSummary {
   executedAt: string;
   isStale: boolean;
 }
+
+export interface AggregationSourceConfig {
+  sourceRef: string;
+  groupColumns: string[];
+  measureColumn: string;
+  mappingStatus?: string;
+  evidenceRefs?: string[];
+}
+
+export interface AggregationRuleConfig {
+  id: string;
+  title: string;
+  operation: string;
+  activeGroupColumns: string[];
+  sources: AggregationSourceConfig[];
+  aggregation: "sum" | "avg" | "count" | "min" | "max" | string;
+  combineMode: "union_all" | "join" | string;
+  outputColumn: string;
+  outputGrain?: string;
+  normalization?: string;
+  missingGroupPolicy?: string;
+  invalidMeasurePolicy?: string;
+  noMatchPolicy?: string;
+  status?: string;
+}
+
+export interface AggregationTableResult {
+  ruleId: string;
+  ruleTitle: string;
+  groupColumn: string;
+  measureColumn: string;
+  totalRecordsProcessed: number;
+  totalMeasureSum: number;
+  rows: Array<{
+    agentName: string;
+    referenceRole: string;
+    recordCount: number;
+    totalAmount: number;
+    sourceBreakdown: Record<string, number>;
+    status: string;
+  }>;
+}

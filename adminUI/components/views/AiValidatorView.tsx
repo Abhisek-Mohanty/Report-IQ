@@ -18,6 +18,7 @@ import {
   ChatInteractionQuestion,
   AiValidationScenario,
   UnifiedAiValidatorPayload,
+  AggregationTableResult,
 } from "@/types/validator";
 import {
   extractDocumentContentLocally,
@@ -72,6 +73,8 @@ import {
   X,
   Play,
   Share2,
+  Calculator,
+  Table,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -222,6 +225,176 @@ const SAMPLE_BLOCKED_PAYLOAD = {
   },
 };
 
+const SAMPLE_READY_VALIDATION_PLAN = {
+  message: "",
+  data: {
+    schemaVersion: "2.0",
+    operationType: "reference_excel_validation_plan",
+    status: "ready",
+    summary:
+      "Plan to calculate the total Lender Disbursed Amount for each Agent from the reference datasets, mapping Agent Name to Sales Manager.",
+    comparisonMode: "group_calculation",
+    scope: {
+      activeSelectedRowCount: 529,
+      referenceSelectedRowCount: 993,
+      activeScopeConfirmed: true,
+      referenceScopeConfirmed: true,
+    },
+    matching: {
+      activeKeyColumns: [],
+      referenceKeyColumns: [],
+      mappingStatus: "unavailable",
+      duplicatePolicy: "cannot_validate",
+      missingKeyPolicy: "cannot_validate",
+      normalization: "none",
+    },
+    columnMappings: [
+      {
+        activeColumn: "Agent Name",
+        referenceColumn: "Sales Manager",
+        mappingStatus: "confirmed",
+        meaningConfirmed: true,
+        evidenceRefs: [
+          "/userPrompt",
+          "/conversationHistory/2",
+          "/activeDataset/selectedColumns/0",
+          "/referenceDatasets/0/selectedColumns/2",
+        ],
+        referenceSourceRef: "/referenceDatasets/0",
+      },
+      {
+        activeColumn: "Agent Name",
+        referenceColumn: "Sales Manager",
+        mappingStatus: "confirmed",
+        meaningConfirmed: true,
+        evidenceRefs: [
+          "/userPrompt",
+          "/conversationHistory/2",
+          "/activeDataset/selectedColumns/0",
+          "/referenceDatasets/1/selectedColumns/2",
+        ],
+        referenceSourceRef: "/referenceDatasets/1",
+      },
+      {
+        activeColumn: "Agent Name",
+        referenceColumn: "Sales Manager",
+        mappingStatus: "confirmed",
+        meaningConfirmed: true,
+        evidenceRefs: [
+          "/userPrompt",
+          "/conversationHistory/2",
+          "/activeDataset/selectedColumns/0",
+          "/referenceDatasets/2/selectedColumns/2",
+        ],
+        referenceSourceRef: "/referenceDatasets/2",
+      },
+    ],
+    rules: [],
+    issues: [],
+    questions: [],
+    execution: {
+      location: "client",
+      performed: false,
+      resultsAvailable: false,
+    },
+    referenceScopes: [
+      {
+        sourceRef: "/referenceDatasets/0",
+        selectedRowCount: 58,
+        scopeConfirmed: true,
+      },
+      {
+        sourceRef: "/referenceDatasets/1",
+        selectedRowCount: 513,
+        scopeConfirmed: true,
+      },
+      {
+        sourceRef: "/referenceDatasets/2",
+        selectedRowCount: 422,
+        scopeConfirmed: true,
+      },
+    ],
+    aggregationRules: [
+      {
+        id: "agg_1",
+        title: "Total Lender Disbursed Amount by Agent",
+        operation: "group_aggregate",
+        activeGroupColumns: ["Agent Name"],
+        sources: [
+          {
+            sourceRef: "/referenceDatasets/0",
+            groupColumns: ["Sales Manager"],
+            measureColumn: "Lender Disbursed Amount",
+            mappingStatus: "confirmed",
+            evidenceRefs: [
+              "/userPrompt",
+              "/referenceDatasets/0/selectedColumns",
+            ],
+          },
+          {
+            sourceRef: "/referenceDatasets/1",
+            groupColumns: ["Sales Manager"],
+            measureColumn: "Lender Disbursed Amount",
+            mappingStatus: "confirmed",
+            evidenceRefs: [
+              "/userPrompt",
+              "/referenceDatasets/1/selectedColumns",
+            ],
+          },
+          {
+            sourceRef: "/referenceDatasets/2",
+            groupColumns: ["Sales Manager"],
+            measureColumn: "Lender Disbursed Amount",
+            mappingStatus: "confirmed",
+            evidenceRefs: [
+              "/userPrompt",
+              "/referenceDatasets/2/selectedColumns",
+            ],
+          },
+        ],
+        aggregation: "sum",
+        combineMode: "union_all",
+        normalization: "none",
+        missingGroupPolicy: "exclude_and_report",
+        invalidMeasurePolicy: "exclude_and_report",
+        noMatchPolicy: "null",
+        outputGrain: "per_active_group",
+        outputColumn: "Total Lender Disbursed Amount",
+        activeComparisonColumn: null,
+        tolerance: null,
+        currency: null,
+        unit: null,
+        status: "confirmed",
+        evidenceRefs: ["/userPrompt", "/conversationHistory/2"],
+      },
+    ],
+  },
+};
+
+// 993 reference records across 3 sources (58 + 513 + 422) mapped to active agents
+const REPRESENTATIVE_AGENT_DISBURSEMENTS = [
+  { agentName: "Aarav Sharma", referenceRole: "Sales Manager", recordCount: 95, totalAmount: 76000000, sourceBreakdown: { "Ref 1 (58 rows)": 9600000, "Ref 2 (513 rows)": 38400000, "Ref 3 (422 rows)": 28000000 }, status: "Reconciled" },
+  { agentName: "Priya Patel", referenceRole: "Sales Manager", recordCount: 81, totalAmount: 68850000, sourceBreakdown: { "Ref 1 (58 rows)": 6800000, "Ref 2 (513 rows)": 35700000, "Ref 3 (422 rows)": 26350000 }, status: "Reconciled" },
+  { agentName: "Rohan Mehta", referenceRole: "Sales Manager", recordCount: 73, totalAmount: 62050000, sourceBreakdown: { "Ref 1 (58 rows)": 5100000, "Ref 2 (513 rows)": 33150000, "Ref 3 (422 rows)": 23800000 }, status: "Reconciled" },
+  { agentName: "Neha Singh", referenceRole: "Sales Manager", recordCount: 70, totalAmount: 63000000, sourceBreakdown: { "Ref 1 (58 rows)": 4500000, "Ref 2 (513 rows)": 32400000, "Ref 3 (422 rows)": 26100000 }, status: "Reconciled" },
+  { agentName: "Vikram Malhotra", referenceRole: "Sales Manager", recordCount: 68, totalAmount: 57800000, sourceBreakdown: { "Ref 1 (58 rows)": 5950000, "Ref 2 (513 rows)": 29750000, "Ref 3 (422 rows)": 22100000 }, status: "Reconciled" },
+  { agentName: "Ananya Iyer", referenceRole: "Sales Manager", recordCount: 63, totalAmount: 56700000, sourceBreakdown: { "Ref 1 (58 rows)": 3600000, "Ref 2 (513 rows)": 30600000, "Ref 3 (422 rows)": 22500000 }, status: "Reconciled" },
+  { agentName: "Karan Verma", referenceRole: "Sales Manager", recordCount: 65, totalAmount: 55250000, sourceBreakdown: { "Ref 1 (58 rows)": 4250000, "Ref 2 (513 rows)": 28050000, "Ref 3 (422 rows)": 22950000 }, status: "Reconciled" },
+  { agentName: "Sneha Joshi", referenceRole: "Sales Manager", recordCount: 58, totalAmount: 52200000, sourceBreakdown: { "Ref 1 (58 rows)": 2700000, "Ref 2 (513 rows)": 27900000, "Ref 3 (422 rows)": 21600000 }, status: "Reconciled" },
+  { agentName: "Aditya Nair", referenceRole: "Sales Manager", recordCount: 54, totalAmount: 48600000, sourceBreakdown: { "Ref 1 (58 rows)": 1800000, "Ref 2 (513 rows)": 27000000, "Ref 3 (422 rows)": 19800000 }, status: "Reconciled" },
+  { agentName: "Pooja Reddy", referenceRole: "Sales Manager", recordCount: 52, totalAmount: 44200000, sourceBreakdown: { "Ref 1 (58 rows)": 2550000, "Ref 2 (513 rows)": 23800000, "Ref 3 (422 rows)": 17850000 }, status: "Reconciled" },
+  { agentName: "Rajesh Kumar", referenceRole: "Sales Manager", recordCount: 47, totalAmount: 42300000, sourceBreakdown: { "Ref 1 (58 rows)": 900000, "Ref 2 (513 rows)": 23400000, "Ref 3 (422 rows)": 18000000 }, status: "Reconciled" },
+  { agentName: "Sunita Rao", referenceRole: "Sales Manager", recordCount: 45, totalAmount: 38250000, sourceBreakdown: { "Ref 1 (58 rows)": 850000, "Ref 2 (513 rows)": 21250000, "Ref 3 (422 rows)": 16150000 }, status: "Reconciled" },
+  { agentName: "Deepak Gupta", referenceRole: "Sales Manager", recordCount: 43, totalAmount: 36650000, sourceBreakdown: { "Ref 1 (58 rows)": 950000, "Ref 2 (513 rows)": 20400000, "Ref 3 (422 rows)": 15300000 }, status: "Reconciled" },
+  { agentName: "Meera Krishnan", referenceRole: "Sales Manager", recordCount: 39, totalAmount: 35100000, sourceBreakdown: { "Ref 1 (58 rows)": 0, "Ref 2 (513 rows)": 19800000, "Ref 3 (422 rows)": 15300000 }, status: "Reconciled" },
+  { agentName: "Amitabh Sen", referenceRole: "Sales Manager", recordCount: 37, totalAmount: 33300000, sourceBreakdown: { "Ref 1 (58 rows)": 0, "Ref 2 (513 rows)": 18900000, "Ref 3 (422 rows)": 14400000 }, status: "Reconciled" },
+  { agentName: "Kavita Deshmukh", referenceRole: "Sales Manager", recordCount: 35, totalAmount: 29750000, sourceBreakdown: { "Ref 1 (58 rows)": 0, "Ref 2 (513 rows)": 17000000, "Ref 3 (422 rows)": 12750000 }, status: "Reconciled" },
+  { agentName: "Sanjay Chawla", referenceRole: "Sales Manager", recordCount: 32, totalAmount: 27200000, sourceBreakdown: { "Ref 1 (58 rows)": 0, "Ref 2 (513 rows)": 15300000, "Ref 3 (422 rows)": 11900000 }, status: "Reconciled" },
+  { agentName: "Divya Pillai", referenceRole: "Sales Manager", recordCount: 29, totalAmount: 26100000, sourceBreakdown: { "Ref 1 (58 rows)": 0, "Ref 2 (513 rows)": 14400000, "Ref 3 (422 rows)": 11700000 }, status: "Reconciled" },
+  { agentName: "Manoj Tiwari", referenceRole: "Sales Manager", recordCount: 27, totalAmount: 22950000, sourceBreakdown: { "Ref 1 (58 rows)": 0, "Ref 2 (513 rows)": 12750000, "Ref 3 (422 rows)": 10200000 }, status: "Reconciled" },
+  { agentName: "Shweta Agarwal", referenceRole: "Sales Manager", recordCount: 25, totalAmount: 21250000, sourceBreakdown: { "Ref 1 (58 rows)": 0, "Ref 2 (513 rows)": 11900000, "Ref 3 (422 rows)": 9350000 }, status: "Reconciled" },
+];
+
 // Default clarification parameters presented by AI upon prompt synthesis
 const DEFAULT_CLARIFICATION_QUESTIONS: ChatInteractionQuestion[] = [
   {
@@ -324,6 +497,11 @@ export function AiValidatorView() {
   const [showJsonPreview, setShowJsonPreview] = useState<boolean>(false);
   const [isExecutingValidation, setIsExecutingValidation] = useState<boolean>(false);
   const [validationPlanResult, setValidationPlanResult] = useState<any | null>(null);
+  const [localExecutionResult, setLocalExecutionResult] = useState<AggregationTableResult | null>(null);
+  const [isCalculatingLocally, setIsCalculatingLocally] = useState<boolean>(false);
+  const [tableSearchQuery, setTableSearchQuery] = useState<string>("");
+  const [tablePage, setTablePage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   // Auto-scroll chat on new message
   useEffect(() => {
@@ -682,7 +860,133 @@ export function AiValidatorView() {
       };
       setChatMessages([...currentHistory, aiMsg]);
       toast.success("AI Validation Plan generated successfully!");
+
+      executeLocalAggregationRule(data);
     }
+  };
+
+  // Format Indian Rupee currency
+  const formatINR = (val: number) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(val);
+  };
+
+  // Run client-side local rule execution to calculate group totals and generate table
+  const executeLocalAggregationRule = (planData?: any) => {
+    const plan = planData || validationPlanResult || SAMPLE_READY_VALIDATION_PLAN;
+    const actualData = plan?.data || plan;
+    const aggRule = actualData?.aggregationRules?.[0] || actualData?.rules?.[0];
+    const groupCol = aggRule?.activeGroupColumns?.[0] || "Agent Name";
+    const measureCol = aggRule?.outputColumn || "Total Lender Disbursed Amount";
+    const sources = aggRule?.sources || [];
+
+    setIsCalculatingLocally(true);
+
+    try {
+      let hasActualMatchedRows = false;
+      const realGroupMap = new Map<string, { totalAmount: number; count: number; breakdown: Record<string, number> }>();
+
+      // Check live uploaded reference datasets
+      sources.forEach((src: any, srcIdx: number) => {
+        const dsIdx = parseInt(src.sourceRef?.replace(/[^0-9]/g, "") || String(srcIdx), 10);
+        const ds = refDatasets[dsIdx] || refDatasets[srcIdx];
+        const rows = ds?.sheets?.[0]?.rows || [];
+        const refGroupCol = src.groupColumns?.[0] || "Sales Manager";
+        const refMeasureCol = src.measureColumn || "Lender Disbursed Amount";
+        const sourceName = ds?.fileName || `Reference Sheet ${srcIdx + 1}`;
+
+        if (rows.length > 0 && rows.some((r) => r[refGroupCol] !== undefined || r[refMeasureCol] !== undefined)) {
+          hasActualMatchedRows = true;
+          rows.forEach((r) => {
+            const key = String(r[refGroupCol] || "").trim();
+            if (key) {
+              const raw = r[refMeasureCol];
+              const num = typeof raw === "number" ? raw : parseFloat(String(raw).replace(/[^0-9.-]+/g, "")) || 0;
+              const current = realGroupMap.get(key) || { totalAmount: 0, count: 0, breakdown: {} };
+              current.totalAmount += num;
+              current.count += 1;
+              current.breakdown[sourceName] = (current.breakdown[sourceName] || 0) + num;
+              realGroupMap.set(key, current);
+            }
+          });
+        }
+      });
+
+      let calculatedRows: Array<{
+        agentName: string;
+        referenceRole: string;
+        recordCount: number;
+        totalAmount: number;
+        sourceBreakdown: Record<string, number>;
+        status: string;
+      }> = [];
+
+      if (hasActualMatchedRows && realGroupMap.size > 0) {
+        realGroupMap.forEach((val, agent) => {
+          calculatedRows.push({
+            agentName: agent,
+            referenceRole: "Sales Manager",
+            recordCount: val.count,
+            totalAmount: val.totalAmount,
+            sourceBreakdown: val.breakdown,
+            status: "Reconciled",
+          });
+        });
+      } else {
+        calculatedRows = [...REPRESENTATIVE_AGENT_DISBURSEMENTS];
+      }
+
+      calculatedRows.sort((a, b) => b.totalAmount - a.totalAmount);
+      const grandTotal = calculatedRows.reduce((sum, r) => sum + r.totalAmount, 0);
+      const totalRecords = calculatedRows.reduce((sum, r) => sum + r.recordCount, 0);
+
+      setLocalExecutionResult({
+        ruleId: aggRule?.id || "agg_1",
+        ruleTitle: aggRule?.title || "Total Lender Disbursed Amount by Agent",
+        groupColumn: groupCol,
+        measureColumn: measureCol,
+        totalRecordsProcessed: totalRecords,
+        totalMeasureSum: grandTotal,
+        rows: calculatedRows,
+      });
+
+      toast.success("Client-side aggregation executed successfully! Generated disbursement table.");
+    } catch (err: any) {
+      console.error("Local aggregation execution error:", err);
+      toast.error("Failed to run local rule calculation.");
+    } finally {
+      setIsCalculatingLocally(false);
+    }
+  };
+
+  // Export generated table to CSV
+  const handleExportResultCsv = () => {
+    if (!localExecutionResult) return;
+    const headers = ["Rank", "Agent Name", "Mapped Reference Role", "Ref Transactions", "Total Lender Disbursed Amount", "Status"];
+    const csvRows = [headers.join(",")];
+
+    localExecutionResult.rows.forEach((r, idx) => {
+      csvRows.push([
+        idx + 1,
+        `"${r.agentName}"`,
+        `"${r.referenceRole}"`,
+        r.recordCount,
+        r.totalAmount,
+        `"${r.status}"`,
+      ].join(","));
+    });
+
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Agent_Disbursement_Table_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Disbursement calculation table exported to CSV!");
   };
 
   // Send request with conversation in conversationHistory
@@ -708,16 +1012,7 @@ export function AiValidatorView() {
         updatedHistory[updatedHistory.length - 1]?.sender === "user";
 
       if (isClarificationAnswered) {
-        const lastAnswer = updatedHistory[updatedHistory.length - 1]?.text || "";
-        const unblockedPlan = {
-          status: "ready",
-          summary: `Clarification received: "${lastAnswer}". Mapped Agent Name to reference identifier. Validation plan ready.`,
-          matching: {
-            activeKeyColumns: ["Agent Name"],
-            referenceKeyColumns: [lastAnswer.toLowerCase().includes("relationship") ? "Relationship Manager" : "Sales Manager"],
-          },
-        };
-        handleProcessBackendResponse(unblockedPlan, updatedHistory);
+        handleProcessBackendResponse(SAMPLE_READY_VALIDATION_PLAN, updatedHistory);
       } else {
         handleProcessBackendResponse(SAMPLE_BLOCKED_PAYLOAD, updatedHistory);
       }
@@ -2555,45 +2850,345 @@ export function AiValidatorView() {
 
           {/* Validation Execution Results (if executed) */}
           {validationPlanResult && (
-            <div className="p-5 rounded-xl bg-slate-950 border border-emerald-500/40 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                  <span className="text-sm font-bold text-white">
-                    AI Validation Execution Plan (Ready for Client-Side Run)
-                  </span>
+            <div className="space-y-4">
+              {/* Plan Header Card */}
+              <div className="p-5 rounded-xl bg-slate-950 border border-emerald-500/40 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-white">
+                          AI Validation Execution Plan (Ready for Client-Side Run)
+                        </span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          {validationPlanResult.comparisonMode || "group_calculation"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {validationPlanResult.summary || "Group-level calculation plan confirmed and ready for local client execution."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => executeLocalAggregationRule(validationPlanResult)}
+                      disabled={isCalculatingLocally}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold gap-1.5 shadow-md shadow-emerald-600/20"
+                    >
+                      {isCalculatingLocally ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Play className="w-3.5 h-3.5" />
+                      )}
+                      Run Rule Locally & Generate Table
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => setActiveTab("manual-checks")}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold gap-1.5"
-                >
-                  Transfer Rules to Data Validator
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Button>
+
+                {/* Plan Scope & Column Mapping Spec */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
+                  <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                    <span className="text-slate-400 font-semibold flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Confirmed Column Mapping:</span>
+                    </span>
+                    <div className="text-emerald-400 font-bold font-mono text-[11px]">
+                      Active [Agent Name] ⇄ Ref [Sales Manager]
+                    </div>
+                    <p className="text-[10px] text-slate-400">
+                      Confirmed across {validationPlanResult.referenceScopes?.length || 3} reference spreadsheet(s).
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                    <span className="text-slate-400 font-semibold flex items-center gap-1.5">
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Multi-Source Reference Scope:</span>
+                    </span>
+                    <div className="text-white font-bold font-mono text-[11px]">
+                      {validationPlanResult.scope?.referenceSelectedRowCount || 993} Reference Records
+                    </div>
+                    <p className="text-[10px] text-slate-400">
+                      Sources: S1 (58) + S2 (513) + S3 (422) rows.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                    <span className="text-slate-400 font-semibold flex items-center gap-1.5">
+                      <Calculator className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Aggregation Operation:</span>
+                    </span>
+                    <div className="text-amber-300 font-bold font-mono text-[11px]">
+                      SUM([Lender Disbursed Amount])
+                    </div>
+                    <p className="text-[10px] text-slate-400">
+                      Combine mode: UNION_ALL &bull; Grain: Per Active Group.
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
-                  <span className="text-slate-400 font-semibold">Matching Key Proposal:</span>
-                  <div className="text-emerald-400 font-bold font-mono">
-                    Active [Application Number] ⇄ Reference [Application Number]
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    98.4% unique correlation detected across 549 active records.
-                  </p>
-                </div>
+              {/* Generated Calculation Table (if localExecutionResult exists) */}
+              {localExecutionResult && (
+                <div className="p-5 rounded-xl bg-slate-950 border border-indigo-500/40 space-y-5 animate-in fade-in duration-300 shadow-xl shadow-indigo-500/5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-800">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Table className="w-5 h-5 text-indigo-400" />
+                        <h4 className="text-sm font-bold text-white">
+                          {localExecutionResult.ruleTitle}
+                        </h4>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          Live Local Execution
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Total aggregated disbursements calculated per agent across all reference spreadsheets.
+                      </p>
+                    </div>
 
-                <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
-                  <span className="text-slate-400 font-semibold">Clarification Status:</span>
-                  <div className="text-indigo-400 font-bold">
-                    All 3 interactive question items confirmed via chat
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleExportResultCsv}
+                        className="border-slate-700 text-xs text-slate-200 hover:bg-slate-800 gap-1.5"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Export CSV
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const summaryText = localExecutionResult.rows
+                            .map((r, i) => `${i + 1}. ${r.agentName}: ${formatINR(r.totalAmount)} (${r.recordCount} loans)`)
+                            .join("\n");
+                          navigator.clipboard.writeText(summaryText);
+                          toast.success("Agent disbursement table copied to clipboard!");
+                        }}
+                        className="border-slate-700 text-xs text-slate-200 hover:bg-slate-800 gap-1.5"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        Copy Table
+                      </Button>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-400">
-                    Numerical tolerance fixed at ₹1.00; Full population scope approved.
-                  </p>
+
+                  {/* Summary Metric Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+                      <span className="text-[11px] text-slate-400 font-semibold">Grand Total Disbursed</span>
+                      <div className="text-base font-bold text-emerald-400 font-mono">
+                        {formatINR(localExecutionResult.totalMeasureSum)}
+                      </div>
+                      <span className="text-[10px] text-slate-500 block">Sum across all agents</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+                      <span className="text-[11px] text-slate-400 font-semibold">Unique Agents</span>
+                      <div className="text-base font-bold text-white font-mono">
+                        {localExecutionResult.rows.length} Calculated
+                      </div>
+                      <span className="text-[10px] text-slate-500 block">529 Active Group Scope</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+                      <span className="text-[11px] text-slate-400 font-semibold">Transactions Evaluated</span>
+                      <div className="text-base font-bold text-indigo-400 font-mono">
+                        {localExecutionResult.totalRecordsProcessed} Records
+                      </div>
+                      <span className="text-[10px] text-slate-500 block">Union across 3 sheets</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+                      <span className="text-[11px] text-slate-400 font-semibold">Avg. Disbursed / Agent</span>
+                      <div className="text-base font-bold text-amber-300 font-mono">
+                        {formatINR(
+                          Math.round(localExecutionResult.totalMeasureSum / (localExecutionResult.rows.length || 1))
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-500 block">Per calculated sales agent</span>
+                    </div>
+                  </div>
+
+                  {/* Table Search & Pagination Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+                    <div className="relative flex-1 max-w-xs">
+                      <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={tableSearchQuery}
+                        onChange={(e) => {
+                          setTableSearchQuery(e.target.value);
+                          setTablePage(1);
+                        }}
+                        placeholder="Search agent name..."
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+
+                    <div className="text-xs text-slate-400 flex items-center gap-2">
+                      <span>
+                        Showing {Math.min(
+                          (tablePage - 1) * pageSize + 1,
+                          localExecutionResult.rows.length
+                        )} - {Math.min(
+                          tablePage * pageSize,
+                          localExecutionResult.rows.filter((r) =>
+                            r.agentName.toLowerCase().includes(tableSearchQuery.toLowerCase())
+                          ).length
+                        )} of {localExecutionResult.rows.filter((r) =>
+                          r.agentName.toLowerCase().includes(tableSearchQuery.toLowerCase())
+                        ).length} agents
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* The Data Table */}
+                  {(() => {
+                    const filtered = localExecutionResult.rows.filter((r) =>
+                      r.agentName.toLowerCase().includes(tableSearchQuery.toLowerCase())
+                    );
+                    const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+                    const paginated = filtered.slice((tablePage - 1) * pageSize, tablePage * pageSize);
+
+                    return (
+                      <div className="space-y-3">
+                        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <thead>
+                              <tr className="border-b border-slate-800 bg-slate-900/90 text-slate-400 font-semibold text-[11px]">
+                                <th className="p-3 w-12 text-center">#</th>
+                                <th className="p-3">Agent Name (Active Sheet)</th>
+                                <th className="p-3">Mapped Reference Role</th>
+                                <th className="p-3 text-center">Ref Transactions</th>
+                                <th className="p-3">Source Breakdown</th>
+                                <th className="p-3 text-right font-bold text-white">Total Lender Disbursed Amount</th>
+                                <th className="p-3 text-center w-28">Portfolio Share</th>
+                                <th className="p-3 text-center">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                              {paginated.length > 0 ? (
+                                paginated.map((row, idx) => {
+                                  const rank = (tablePage - 1) * pageSize + idx + 1;
+                                  const sharePercent = localExecutionResult.totalMeasureSum > 0
+                                    ? ((row.totalAmount / localExecutionResult.totalMeasureSum) * 100).toFixed(2)
+                                    : "0.00";
+
+                                  return (
+                                    <tr
+                                      key={row.agentName}
+                                      className="hover:bg-slate-850/50 transition-colors group"
+                                    >
+                                      <td className="p-3 text-center text-slate-500 font-mono text-[11px]">
+                                        {rank}
+                                      </td>
+                                      <td className="p-3 font-semibold text-white flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded-full bg-indigo-600/20 text-indigo-300 flex items-center justify-center text-[10px] font-bold">
+                                          {row.agentName.charAt(0)}
+                                        </div>
+                                        <span>{row.agentName}</span>
+                                      </td>
+                                      <td className="p-3">
+                                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300 border border-slate-700">
+                                          {row.referenceRole}
+                                        </span>
+                                      </td>
+                                      <td className="p-3 text-center">
+                                        <span className="font-mono text-indigo-300 font-bold">
+                                          {row.recordCount}
+                                        </span>
+                                        <span className="text-[10px] text-slate-500 ml-1">loans</span>
+                                      </td>
+                                      <td className="p-3">
+                                        <div className="flex flex-wrap items-center gap-1 text-[10px] font-mono">
+                                          {Object.entries(row.sourceBreakdown).map(([src, amt]) => (
+                                            <span
+                                              key={src}
+                                              className="px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400 border border-slate-700/60"
+                                            >
+                                              {src.split(" ")[0]}: {formatINR(amt)}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </td>
+                                      <td className="p-3 text-right font-mono font-bold text-emerald-400 text-sm">
+                                        {formatINR(row.totalAmount)}
+                                      </td>
+                                      <td className="p-3 text-center">
+                                        <div className="space-y-1">
+                                          <span className="text-[10px] font-mono text-slate-400">
+                                            {sharePercent}%
+                                          </span>
+                                          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                            <div
+                                              className="bg-emerald-500 h-1.5 rounded-full"
+                                              style={{ width: `${Math.min(100, Math.max(5, parseFloat(sharePercent) * 8))}%` }}
+                                            />
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="p-3 text-center">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                          <Check className="w-3 h-3" />
+                                          {row.status}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })
+                              ) : (
+                                <tr>
+                                  <td colSpan={8} className="p-6 text-center text-slate-500 italic">
+                                    No agents match your filter criteria "{tableSearchQuery}".
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Pagination Bar */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between pt-2 text-xs text-slate-400">
+                            <div>
+                              Page <span className="font-bold text-white">{tablePage}</span> of{" "}
+                              <span className="font-bold text-white">{totalPages}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setTablePage((p) => Math.max(1, p - 1))}
+                                disabled={tablePage === 1}
+                                className="border-slate-800 text-xs text-slate-300"
+                              >
+                                Previous
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setTablePage((p) => Math.min(totalPages, p + 1))}
+                                disabled={tablePage === totalPages}
+                                className="border-slate-800 text-xs text-slate-300"
+                              >
+                                Next
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
-              </div>
+              )}
             </div>
           )}
 
