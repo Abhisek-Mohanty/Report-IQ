@@ -1762,20 +1762,38 @@ Do not rewrite the input.
 References must resolve against the exact INPUT DATA supplied.
 
 SCENARIO MATCHING
-- selectedScenarios[].id identifies each selected scenario.
-- analysisResults[].scenarioId identifies each array-based result.
-- Match IDs explicitly; never assume matching array order.
-- For object-based results, use the actual scenario key and check any
-  supplied scenarioId for consistency.
-- Preserve scenario IDs and column names exactly.
-- Include one scenarioAnalysis object per uniquely identified selected scenario.
-- Missing or duplicate IDs require a validation warning.
-- Never invent IDs or guess ambiguous mappings.
-- If a selected scenario has no usable result, retain its fixed object shape,
-  leave unsupported collections empty, and explain the missing result.
+- Match selectedScenarios[i] with analysisResults[i] by array position.
+- Array order is authoritative. Do not search, reorder, or match results
+  using id or scenarioId values.
+- Preserve the selected scenario's ID and column names exactly.
+- Include one scenarioAnalysis object per selectedScenarios array item,
+  preserving the same order.
+- Every reference for that scenario's result must use its actual
+  zero-based analysisResults index.
+- If supplied result scenarioId differs from the selected scenario's ID,
+  add a validation warning without changing the positional mapping.
+- If a corresponding result is missing or unusable, retain the scenario's
+  fixed object shape, leave unsupported collections empty, and explain
+  the missing result.
+- If array lengths differ, add a validation warning.
+- Do not create additional scenarios for unmatched extra results.
+- analysisResults must be an array. Do not invent array positions for
+  object-based results.
 
 REFERENCE CONTRACT
 Use RFC 6901 JSON Pointer strings for source references.
+
+Use zero-based array indexes, never scenario ID values:
+- First scenario: /analysisResults/0/overall/rowCount
+- Second scenario: /analysisResults/1/overall/rowCount
+- Third scenario: /analysisResults/2/overall/rowCount
+
+Additional examples:
+- /analysisResults/1/groups/2/count
+- /dataset/summary/2/stats/mean
+
+Never use paths such as:
+- /analysisResults/s1/overall/rowCount
 
 Original-layout examples:
 - /analysisResults/0/overall/rowCount
@@ -1783,8 +1801,8 @@ Original-layout examples:
 - /summary/2/stats/mean
 
 Normalized-layout examples:
-- /analysisResults/s1/overall/rowCount
-- /analysisResults/s1/groups/2/count
+- /analysisResults/1/overall/rowCount
+- /analysisResults/1/groups/2/count
 - /dataset/summary/2/stats/mean
 
 Metadata examples:

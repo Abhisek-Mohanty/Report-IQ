@@ -11,6 +11,9 @@ class COVERSATION_TYPE(Enum):
 class PROMPT_TYPE(Enum):
     PREDEFINED = 1
     CUSTOMISZED = 2
+class ACTIVITY_LOG_STATUS(Enum):
+    SUCCESS = 1
+    FAIL = 2
 
 class USER_CONTEXT(Enum):
     ADMIN    = 0 
@@ -159,31 +162,6 @@ ASSET_STATUS = {
     3 : "Maintaince"
 }
 
-ASSIGN_STATUS ={
-    1 : "Initiated",
-    2 : "Assigned",
-    3 : "Maintainanced",
-    4 : "Handovered",
-    5 : "Cancelled"
-}
 
-
-MAINTAINCE_STATUS = {
-    1: "Under-Maintaince",
-    2: "Available",
-    3: "Lost/Broken"
-}
-
-ASSET_TYPE = {
-    1: "Laptop",
-    2: "Desktop",
-    3: "Mouse"
-}
-
-OWNER_TYPE = {
-    1: "Techfino Capital Pvt Ltd",
-    2: "BOYD",
-    3: "Rented"
-}
 
 

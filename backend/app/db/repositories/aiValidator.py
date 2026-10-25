@@ -44,11 +44,9 @@ class AiValidatorRepository(BaseRepository):
                                                                                                                 allow_nan=False,
                                                                                                             ),
                                                                                                         )
-            print("\n\n\n\n\n\n\n","prompt",prompt)
             system_instruction = REFERENCE_EXCEL_VALIDATOR_SYSTEM_PROMPT 
             gemini = GEMINI_AI()
             oResponse = await gemini.gemini_response(prompt=prompt,operation_instruction=system_instruction)
-            print("\n\n\n\n\n\n\n",oResponse)
             response_text = oResponse.text
 
             oAcitvityLog = ActivityLog(

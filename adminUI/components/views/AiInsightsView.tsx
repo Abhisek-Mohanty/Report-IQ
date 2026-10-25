@@ -504,8 +504,9 @@ export function AiInsightsView() {
       toast.success(`AI Pattern Engine discovered ${incomingScenarios.length} relationships!`);
     } catch (error: any) {
       console.error('Error fetching AI insights:', error);
-      toast.error(error?.response?.data?.detail || "Could not reach AI backend. Loading sample scenarios...");
-      loadSampleScenarios();
+      console.log(error);
+      
+      toast.error(error?.message || "Could not reach AI backend. Loading sample scenarios...");
     } finally {
       setIsAnalyzing(false);
     }

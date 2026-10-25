@@ -14,11 +14,10 @@ from app.db.repositories.base import BaseRepository
 from app.resources.helper.moment import Moment
 from app.db.repositories.base import BaseRepository
 from app.core.config import CLIENT_PATH, DEFAULT_PASSWORD, SUPPORT_MAILID, HR_SUPPORT_MAIL, VERIFICATION_LINK_VALID_DAYS
-from app.resources.constant import COVERSATION_TYPE,PROMPT_TYPE
+from app.resources.constant import COVERSATION_TYPE,PROMPT_TYPE,ACTIVITY_LOG_STATUS
 from app.services import security
 from app.resources.library.S3.index import s3Bucket
 from app.resources.library.email.sns import SnsEmail
-from app.resources.constant import INVOICE_TYPE, OWNER_TYPE
 from fastapi.encoders import jsonable_encoder
 from app.resources.library.ai.gemini import GEMINI_AI
 
@@ -34,61 +33,74 @@ class AiInsightsRepository(BaseRepository):
                         message = "Don't receive any data"
                     ).send()
             now = Moment().now
-            # oDataSet = DataSet(
-            #     rowSchema = json.dumps(getAttr(payload,"columnTypes",[])),
-            #     sourceFileName = getAttr(payload,"name","NA"),
-            #     rowCount = getAttr(payload,"rowCount",0),
-            #     rowExamples = json.dumps(getAttr(payload,"rows",[])),
-            #     createdBy = user.id,
-            #     updatedAt = now,
-            #     createdAt = now,
-            #     updatedBy = user.id
-            #     ) 
-            # self.save(oDataSet)
-            # oDataSet.dataSetNumber = f"DS-{now.strftime("%Y%m%d")}-"+str(oDataSet.id).rjust(9, '0')
+            oDataSet = DataSet(
+                rowSchema = json.dumps(getAttr(payload,"columnTypes",[])),
+                sourceFileName = getAttr(payload,"name","NA"),
+                rowCount = getAttr(payload,"rowCount",0),
+                rowExamples = json.dumps(getAttr(payload,"rows",[])),
+                createdBy = user.id,
+                updatedAt = now,
+                createdAt = now,
+                updatedBy = user.id
+                ) 
+            self.save(oDataSet)
+            oDataSet.dataSetNumber = f"DS-{now.strftime("%Y%m%d")}-"+str(oDataSet.id).rjust(9, '0')
 
-            # oConversation = Conversation(
-            #         dataSetId = oDataSet.id,
-            #         type = COVERSATION_TYPE.AI_INSIGHTS.value,
-            #         createdBy = user.id, 
-            #         updatedBy = user.id, 
-            #         createdAt = now, 
-            #         updatedAt = now, 
-            #     )
-            # self.save(oConversation)
+            oConversation = Conversation(
+                    dataSetId = oDataSet.id,
+                    type = COVERSATION_TYPE.AI_INSIGHTS.value,
+                    createdBy = user.id, 
+                    updatedBy = user.id, 
+                    createdAt = now, 
+                    updatedAt = now, 
+                )
+            self.save(oConversation)
 
-            # prompt = AI_INSIGHTS_DATASET_PATTERN_USER_PROMPT.format(PAYLOAD=payload)
-            # system_instruction = AI_INSIGHTS_DATASET_PATTERN_SYSTEM_INSTRUCTION 
-            # gemini = GEMINI_AI()
-            # oResponse = await gemini.gemini_response(prompt=prompt,operation_instruction=system_instruction)
-            # print("\n\n\n\n\n\n\n",oResponse)
-            # response_text = oResponse.text
-
-            # oAcitvityLog = ActivityLog(
-            #         dataSetId = oDataSet.id,
-            #         conversationId = oConversation.id,
-            #         promptType = PROMPT_TYPE.PREDEFINED.value,
-            #         promptToken=oResponse.usage_metadata.prompt_token_count,
-            #         completionToken=oResponse.usage_metadata.candidates_token_count,
-            #         totalTokens=oResponse.usage_metadata.total_token_count,
-            #         response=response_text,
-            #         createdBy = user.id, 
-            #         updatedBy = user.id, 
-            #         createdAt = now, 
-            #         updatedAt = now,
-            # )
-            # self.save(oAcitvityLog)
-            # self.db_session.commit()
-            oResult = self.db_session.query(
-                            ActivityLog
-                        ).first()
-            response_json = json.loads(oResult.response)
-            return SendSuccessResponse(
-                        data = response_json
+            prompt = AI_INSIGHTS_DATASET_PATTERN_USER_PROMPT.format(PAYLOAD=payload)
+            system_instruction = AI_INSIGHTS_DATASET_PATTERN_SYSTEM_INSTRUCTION 
+            gemini = GEMINI_AI()
+            oResponse = await gemini.gemini_response(prompt=prompt,operation_instruction=system_instruction)
+            print("\n\n\n\n\n\n",oResponse)
+            if isinstance(oResponse, dict) and oResponse['errorType']:
+                error = oResponse['message']
+                oAcitvityLog = ActivityLog(
+                            dataSetId = oDataSet.id,
+                            conversationId = oConversation.id,
+                            promptType = PROMPT_TYPE.PREDEFINED.value,
+                            statusCode=ACTIVITY_LOG_STATUS.FAIL.value,
+                            response=error,
+                            createdBy = user.id, 
+                            updatedBy = user.id, 
+                            createdAt = now, 
+                            updatedAt = now,
                     )
-    
-
-            
+                self.save(oAcitvityLog)
+                self.db_session.commit()
+                return SendErrorResponse(
+                        message = error
+                    ).send()
+            else:
+                response_text = oResponse.text
+                oAcitvityLog = ActivityLog(
+                        dataSetId = oDataSet.id,
+                        conversationId = oConversation.id,
+                        promptType = PROMPT_TYPE.PREDEFINED.value,
+                        promptToken=oResponse.usage_metadata.prompt_token_count,
+                        completionToken=oResponse.usage_metadata.candidates_token_count,
+                        totalTokens=oResponse.usage_metadata.total_token_count,
+                        response=response_text,
+                        createdBy = user.id, 
+                        updatedBy = user.id, 
+                        createdAt = now, 
+                        updatedAt = now,
+                )
+                self.save(oAcitvityLog)
+                self.db_session.commit()
+                response_json = json.loads(response_text)
+                return SendSuccessResponse(
+                            data = response_json
+                        )
+        
         except Exception as error:
             raise error
             return SendErrorResponse(
@@ -108,27 +120,45 @@ class AiInsightsRepository(BaseRepository):
             gemini = GEMINI_AI()
             oResponse = await gemini.gemini_response(prompt=prompt,operation_instruction=system_instruction)
             print("\n\n\n\n\n\n\n",oResponse)
-            response_text = oResponse.text
-
-            oAcitvityLog = ActivityLog(
-                    dataSetId = 1,
-                    conversationId = 1,
-                    promptType = PROMPT_TYPE.PREDEFINED.value,
-                    promptToken=oResponse.usage_metadata.prompt_token_count,
-                    completionToken=oResponse.usage_metadata.candidates_token_count,
-                    totalTokens=oResponse.usage_metadata.total_token_count,
-                    response=response_text,
-                    createdBy = user.id, 
-                    updatedBy = user.id, 
-                    createdAt = now, 
-                    updatedAt = now,
-            )
-            self.save(oAcitvityLog)
-            self.db_session.commit()
-            response_json = json.loads(oResponse.text)
-            return SendSuccessResponse(
-                    data = response_json
+            if isinstance(oResponse, dict) and oResponse['errorType']:
+                error = oResponse['message']
+                oAcitvityLog = ActivityLog(
+                            dataSetId = 1,
+                            conversationId = 1,
+                            promptType = PROMPT_TYPE.PREDEFINED.value,
+                            statusCode=ACTIVITY_LOG_STATUS.FAIL.value,
+                            response=error,
+                            createdBy = user.id, 
+                            updatedBy = user.id, 
+                            createdAt = now, 
+                            updatedAt = now,
+                    )
+                self.save(oAcitvityLog)
+                self.db_session.commit()
+                return SendErrorResponse(
+                        message = error
+                    ).send()
+            else:
+                response_text = oResponse.text
+                oAcitvityLog = ActivityLog(
+                        dataSetId = 1,
+                        conversationId = 1,
+                        promptType = PROMPT_TYPE.PREDEFINED.value,
+                        promptToken=oResponse.usage_metadata.prompt_token_count,
+                        completionToken=oResponse.usage_metadata.candidates_token_count,
+                        totalTokens=oResponse.usage_metadata.total_token_count,
+                        response=response_text,
+                        createdBy = user.id, 
+                        updatedBy = user.id, 
+                        createdAt = now, 
+                        updatedAt = now,
                 )
+                self.save(oAcitvityLog)
+                self.db_session.commit()
+                response_json = json.loads(oResponse.text)
+                return SendSuccessResponse(
+                        data = response_json
+                    )
             
         except Exception as error:
             raise error
