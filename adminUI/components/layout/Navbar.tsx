@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useAnalyticsStore } from "@/store/useAnalyticsStore";
-import { Sun, Moon, Bell, Settings, Search, Database, LogOut, User } from "lucide-react";
+import { Sun, Moon, Bell, Settings, Search, Database, LogOut, User, Menu } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
@@ -44,6 +44,7 @@ export function Navbar() {
   const datasets = useAnalyticsStore((state) => state.datasets);
   const selectedDatasetId = useAnalyticsStore((state) => state.selectedDatasetId);
   const selectDataset = useAnalyticsStore((state) => state.selectDataset);
+  const toggleMobileSidebar = useAnalyticsStore((state) => state.toggleMobileSidebar);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotifyOpen, setIsNotifyOpen] = useState(false);
@@ -69,16 +70,25 @@ export function Navbar() {
   //  console.log(session); 
 
   return (
-    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shrink-0 z-20 relative">
-      {/* Workspace Info */}
-      <div className="flex items-center gap-3">
-        <div className="text-sm font-semibold font-display text-foreground">
-          Workspace: <span className="text-primary font-bold">Default Sandbox</span>
+    <header className="h-14 sm:h-16 border-b border-border bg-card flex items-center justify-between px-3 sm:px-6 shrink-0 z-20 relative">
+      {/* Workspace Info & Mobile Hamburger */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <button
+          onClick={toggleMobileSidebar}
+          className="p-1.5 -ml-1 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground md:hidden transition-all duration-200 shrink-0"
+          aria-label="Toggle navigation menu"
+          title="Open Menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <div className="text-xs sm:text-sm font-semibold font-display text-foreground truncate">
+          <span className="hidden sm:inline">Workspace: </span>
+          <span className="text-primary font-bold">Default Sandbox</span>
         </div>
         {activeDataset && (
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 border border-primary/20 rounded-full text-xs text-primary font-medium">
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 border border-primary/20 rounded-full text-xs text-primary font-medium shrink-0">
             <Database className="h-3 w-3" />
-            <span>{activeDataset.name}</span>
+            <span className="truncate max-w-[130px]">{activeDataset.name}</span>
           </div>
         )}
       </div>
@@ -120,44 +130,44 @@ export function Navbar() {
       </div> */}
 
       {/* Right Controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
         {/* Theme Switcher */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-200"
+          className="p-1.5 sm:p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-200"
           aria-label="Toggle Theme"
         >
-          {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+          {theme === "light" ? <Moon className="h-4 w-4 sm:h-5 sm:w-5" /> : <Sun className="h-4 w-4 sm:h-5 sm:w-5" />}
         </button>
 
         {/* Notifications Icon */}
         <button
           onClick={() => setIsNotifyOpen(true)}
-          className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground relative transition-all duration-200"
+          className="p-1.5 sm:p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground relative transition-all duration-200"
           aria-label="Notifications"
         >
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-danger ring-2 ring-card animate-pulse-slow" />
+          <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
+          <span className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 h-2 w-2 rounded-full bg-danger ring-2 ring-card animate-pulse-slow" />
         </button>
 
         {/* Settings Icon */}
         <button
           onClick={() => setIsSettingsOpen(true)}
-          className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-200"
+          className="p-1.5 sm:p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-200"
           aria-label="Settings"
         >
-          <Settings className="h-5 w-5" />
+          <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
         </button>
 
         {/* Divider */}
-        <div className="w-[1px] h-6 bg-border mx-1" />
+        <div className="w-[1px] h-5 sm:h-6 bg-border mx-0.5 sm:mx-1" />
 
         {/* User profile info */}
         <div
-          className="flex items-center gap-2.5 pl-1.5 cursor-pointer select-none group"
+          className="flex items-center gap-1.5 sm:gap-2.5 pl-0.5 sm:pl-1.5 cursor-pointer select-none group"
           onClick={() => setIsProfileOpen(true)}
         >
-          <div className="h-9 w-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-display font-bold text-xs text-primary shadow-inner overflow-hidden relative transition-transform group-hover:scale-105 shrink-0">
+          <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-display font-bold text-xs text-primary shadow-inner overflow-hidden relative transition-transform group-hover:scale-105 shrink-0">
             {picture && !imageError ? (
               <img
                 src={picture}
@@ -169,18 +179,13 @@ export function Navbar() {
             ) : name && name !== "Guest User" ? (
               <span>{name.charAt(0).toUpperCase()}</span>
             ) : (
-              <User className="h-4 w-4 text-primary" />
+              <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
             )}
           </div>
-          <div className="hidden sm:block text-left">
-            <div className="text-xs font-semibold leading-none text-foreground group-hover:text-primary transition-colors">
+          <div className="hidden md:block text-left">
+            <div className="text-xs font-semibold leading-none text-foreground group-hover:text-primary transition-colors max-w-[120px] truncate">
               {name}
             </div>
-            {/* {email && (
-              <div className="text-[10px] text-muted-foreground truncate max-w-[130px] mt-0.5">
-                {email}
-              </div>
-            )} */}
           </div>
         </div>
       </div>

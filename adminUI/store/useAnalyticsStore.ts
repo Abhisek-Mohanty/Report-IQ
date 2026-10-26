@@ -9,6 +9,7 @@ interface AnalyticsState {
   theme: "light" | "dark";
   charts: ChartConfig[];
   queryGroup: FilterGroup;
+  isMobileSidebarOpen: boolean;
 
   // Actions
   setDatasets: (datasets: Dataset[]) => void;
@@ -19,6 +20,8 @@ interface AnalyticsState {
   setActiveTab: (tab: string) => void;
   toggleTheme: () => void;
   setTheme: (theme: "light" | "dark") => void;
+  setMobileSidebarOpen: (isOpen: boolean) => void;
+  toggleMobileSidebar: () => void;
 
   // Sheet updates (for Cleaning operations)
   updateActiveSheetData: (updatedSheet: SheetData) => void;
@@ -47,6 +50,7 @@ export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   theme: "dark", // default to dark theme for premium styling
   charts: [],
   queryGroup: initialQueryGroup(),
+  isMobileSidebarOpen: false,
 
   setDatasets: (datasets) => set({ datasets }),
 
@@ -105,6 +109,9 @@ export const useAnalyticsStore = create<AnalyticsState>((set) => ({
     }
     return { theme };
   }),
+
+  setMobileSidebarOpen: (isOpen) => set({ isMobileSidebarOpen: isOpen }),
+  toggleMobileSidebar: () => set((state) => ({ isMobileSidebarOpen: !state.isMobileSidebarOpen })),
 
   updateActiveSheetData: (updatedSheet) => set((state) => {
     if (!state.selectedDatasetId) return {};
