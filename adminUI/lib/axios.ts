@@ -30,8 +30,7 @@ api.interceptors.response.use(
       // Token expired or invalid
       localStorage.removeItem("access_token");
 
-      // Example: redirect to login
-      window.location.href = "/login";
+      window.location.href = "/";
     }
 
     return Promise.reject(error);

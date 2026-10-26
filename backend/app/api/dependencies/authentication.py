@@ -91,7 +91,7 @@ async def _get_current_user(
         oToken = jwt.get_username_from_token(token, str(SECRET_KEY))
     except ValueError:
         raise UnauthorizedAccess(
-            status_code=status.HTTP_403_FORBIDDEN, detail=error_strings.MALFORMED_PAYLOAD
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=error_strings.MALFORMED_PAYLOAD
         )
 
     try:
@@ -113,9 +113,8 @@ async def _get_current_user(
         return  oReturn
     # except EntityDoesNotExist:
     except BaseException as error:
-        raise error
         raise UnauthorizedAccess(
-            status_code=status.HTTP_403_FORBIDDEN, detail=error_strings.MALFORMED_PAYLOAD
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=error_strings.MALFORMED_PAYLOAD
         )
 
 
