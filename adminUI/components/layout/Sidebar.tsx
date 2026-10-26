@@ -75,11 +75,11 @@ export function Sidebar() {
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider font-display">
             {title}
           </h4>
-          {category === "ai" && (
+          {/* {category === "ai" && (
             <span className="text-[9px] font-semibold text-primary/80 bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
               Desktop
             </span>
-          )}
+          )} */}
         </div>
         <ul className="space-y-1 px-2">
           {items.map((item) => {
