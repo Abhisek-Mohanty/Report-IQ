@@ -301,9 +301,9 @@ export function AiInsightsView() {
       setDashboardError(null);
       setActiveTabMode("dashboard");
 
-      const datasetName = activeDataset?.name
-        ? activeDataset.name.replace(/\.[^/.]+$/, "")
-        : (activeSheet?.name || "Dataset");
+      const datasetName = activeDataset?.id
+        ? activeDataset?.id
+        : "New-Dataset";
 
       const analysisPayload = prepareDetailedAnalysisPayload(
         datasetName,
@@ -476,7 +476,7 @@ export function AiInsightsView() {
 
   // Fetch AI Scenarios from API
   async function fetchPosts() {
-    if (!activeSheet) {
+    if (!activeSheet || !activeDataset) {
       toast.error("No active sheet selected.");
       return;
     }
@@ -485,6 +485,7 @@ export function AiInsightsView() {
       setIsAnalyzing(true);
       const payload = {
         ...activeSheet,
+        id:activeDataset.id,
         rows: exampleRows(activeSheet && activeSheet.rows ? activeSheet.rows : [])
       };
       const response = await api.post("/aiInsights/trendAnalysis", payload);

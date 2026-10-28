@@ -44,11 +44,11 @@ class AiInsightsRepository(BaseRepository):
                 updatedBy = user.id
                 ) 
             self.save(oDataSet)
-            oDataSet.dataSetNumber = f"DS-{now.strftime("%Y%m%d")}-"+str(oDataSet.id).rjust(9, '0')
+            oDataSet.dataSetNumber = getAttr(payload,"id","NA")
 
             oConversation = Conversation(
                     dataSetId = oDataSet.id,
-                    type = COVERSATION_TYPE.AI_INSIGHTS.value,
+                    type = COVERSATION_TYPE.AI_INSIGHTS_SCENARIO.value,
                     createdBy = user.id, 
                     updatedBy = user.id, 
                     createdAt = now, 
@@ -114,6 +114,32 @@ class AiInsightsRepository(BaseRepository):
                         message = "Don't receive any data"
                     ).send()
             now = Moment().now
+            oCheckDataSet = self.db_session.query(DataSet).filter(DataSet.dataSetNumber == getAttr(getAttr(payload,"dataset"),"name")).first()
+            if not oCheckDataSet:
+                oDataSet = DataSet(
+                    rowSchema = json.dumps([]),
+                    sourceFileName = getAttr(payload,"name","NA"),
+                    rowCount = getAttr(getAttr(payload,"dataset"),"rowCount"),
+                    rowExamples = json.dumps([]),
+                    createdBy = user.id,
+                    updatedAt = now,
+                    createdAt = now,
+                    updatedBy = user.id
+                    ) 
+                self.save(oDataSet)
+                oDataSet.dataSetNumber = getAttr(getAttr(payload,"dataset"),"name")
+                oCheckDataSet = oDataSet
+    
+            oConversation = Conversation(
+                    dataSetId = oCheckDataSet.id,
+                    type = COVERSATION_TYPE.AI_INSIGHTS_DETAILED.value,
+                    createdBy = user.id, 
+                    updatedBy = user.id, 
+                    createdAt = now, 
+                    updatedAt = now, 
+                )
+            self.save(oConversation)
+
             prompt = DETAILED_ANALYSIS_DATASET_PATTERN_USER_PROMT.format(PAYLOAD=payload)
             print("\n\n\n\n\n\n\n","prompt",prompt)
             system_instruction = DETAILED_ANALYSIS_DATASET_PATTERN_SYSTEM_INSTRUCTION 
@@ -123,8 +149,8 @@ class AiInsightsRepository(BaseRepository):
             if isinstance(oResponse, dict) and oResponse['errorType']:
                 error = oResponse['message']
                 oAcitvityLog = ActivityLog(
-                            dataSetId = 1,
-                            conversationId = 1,
+                            dataSetId = oCheckDataSet.id,
+                            conversationId = oConversation.id,
                             promptType = PROMPT_TYPE.PREDEFINED.value,
                             statusCode=ACTIVITY_LOG_STATUS.FAIL.value,
                             response=error,
@@ -141,8 +167,8 @@ class AiInsightsRepository(BaseRepository):
             else:
                 response_text = oResponse.text
                 oAcitvityLog = ActivityLog(
-                        dataSetId = 1,
-                        conversationId = 1,
+                        dataSetId = oCheckDataSet.id,
+                        conversationId = oConversation.id,
                         promptType = PROMPT_TYPE.PREDEFINED.value,
                         promptToken=oResponse.usage_metadata.prompt_token_count,
                         completionToken=oResponse.usage_metadata.candidates_token_count,

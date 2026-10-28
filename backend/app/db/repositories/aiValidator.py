@@ -31,8 +31,29 @@ class AiValidatorRepository(BaseRepository):
         try:
 
             now = Moment().now
-            # prompt = DETAILED_ANALYSIS_DATASET_PATTERN_USER_PROMT.format(PAYLOAD=payload)
+            activeDataset = getAttr(payload,'activeDataset')
+            oDataSet = DataSet(
+                rowSchema = json.dumps(getAttr(activeDataset,"columnProfiles",[])),
+                sourceFileName = getAttr(activeDataset,"sheetName","NA"),
+                rowCount = getAttr(activeDataset,"sourceRowCount",0),
+                rowExamples = json.dumps(getAttr(activeDataset,"exampleRows",[])),
+                createdBy = user.id,
+                updatedAt = now,
+                createdAt = now,
+                updatedBy = user.id
+                ) 
+            self.save(oDataSet)
+            oDataSet.dataSetNumber = getAttr(activeDataset,"datasetId","NA")
 
+            oConversation = Conversation(
+                    dataSetId = oDataSet.id,
+                    type = COVERSATION_TYPE.AI_VALIDATION_SHEET.value,
+                    createdBy = user.id, 
+                    updatedBy = user.id, 
+                    createdAt = now, 
+                    updatedAt = now, 
+                )
+            self.save(oConversation)
             user_request = (payload.get("userPrompt") or "").strip() or DEFAULT_VALIDATION_REQUEST.strip()
 
             # Keep the request consistent inside the payload.

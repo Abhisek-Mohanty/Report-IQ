@@ -53,6 +53,8 @@ export function UploadView() {
         setUploadingFiles((prev) => ({ ...prev, [fileId]: 50 }));
         parsedDataset = await parseExcelFile(file, buffer);
       }
+      console.log(parsedDataset);
+      
 
       setUploadingFiles((prev) => ({ ...prev, [fileId]: 90 }));
       

@@ -625,13 +625,13 @@ export function computeScenarioAnalysisResult(sheet: SheetData, scenario: AiScen
 }
 
 export function prepareDetailedAnalysisPayload(
-  datasetName: string,
+  datasetId: string,
   sheet: SheetData,
   selectedScenarios: AiScenario[]
 ) {
   return {
     dataset: {
-      name: datasetName,
+      id: datasetId,
       rowCount: sheet.rowCount || sheet.rows?.length || 0,
       columnCount: sheet.columnCount || sheet.headers?.length || 0,
     },
