@@ -30,7 +30,7 @@ async def unauthorized_access(_: Request, exc: HTTPException) -> JSONResponse:
             "errorMessages": [exc.detail],
             "logout": True,
             "stack": None
-        }, status_code=AccessCode.BAD_REQUEST.value)
+        }, status_code=AccessCode.UNAUTHORISED.value)
 
 async def validation_error_handler(_: Request, exc: ValidationResponse) -> JSONResponse:
     return JSONResponse({

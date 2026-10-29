@@ -71,8 +71,8 @@ class AiValidatorRepository(BaseRepository):
             response_text = oResponse.text
 
             oAcitvityLog = ActivityLog(
-                    dataSetId = 1,
-                    conversationId = 1,
+                    dataSetId = oDataSet.id,
+                    conversationId = oConversation.id,
                     promptType = PROMPT_TYPE.PREDEFINED.value,
                     promptToken=oResponse.usage_metadata.prompt_token_count,
                     completionToken=oResponse.usage_metadata.candidates_token_count,
@@ -94,49 +94,48 @@ class AiValidatorRepository(BaseRepository):
 
             
         except Exception as error:
-            raise error
             return SendErrorResponse(
                 message = error
             )
-    async def getDetailedAnalyis(self, user, payload):
-        try:
-            print("\n\n\n\n",payload)
-            if getAttr(payload,"excel_data",False):
-                return SendErrorResponse(
-                        message = "Don't receive any data"
-                    ).send()
-            now = Moment().now
-            prompt = DETAILED_ANALYSIS_DATASET_PATTERN_USER_PROMT.format(PAYLOAD=payload)
-            print("\n\n\n\n\n\n\n","prompt",prompt)
-            system_instruction = DETAILED_ANALYSIS_DATASET_PATTERN_SYSTEM_INSTRUCTION 
-            gemini = GEMINI_AI()
-            oResponse = await gemini.gemini_response(prompt=prompt,operation_instruction=system_instruction)
-            print("\n\n\n\n\n\n\n",oResponse)
-            response_text = oResponse.text
+    # async def getDetailedAnalyis(self, user, payload):
+    #     try:
+    #         print("\n\n\n\n",payload)
+    #         if getAttr(payload,"excel_data",False):
+    #             return SendErrorResponse(
+    #                     message = "Don't receive any data"
+    #                 ).send()
+    #         now = Moment().now
+    #         prompt = DETAILED_ANALYSIS_DATASET_PATTERN_USER_PROMT.format(PAYLOAD=payload)
+    #         print("\n\n\n\n\n\n\n","prompt",prompt)
+    #         system_instruction = DETAILED_ANALYSIS_DATASET_PATTERN_SYSTEM_INSTRUCTION 
+    #         gemini = GEMINI_AI()
+    #         oResponse = await gemini.gemini_response(prompt=prompt,operation_instruction=system_instruction)
+    #         print("\n\n\n\n\n\n\n",oResponse)
+    #         response_text = oResponse.text
 
-            oAcitvityLog = ActivityLog(
-                    dataSetId = 1,
-                    conversationId = 1,
-                    promptType = PROMPT_TYPE.PREDEFINED.value,
-                    promptToken=oResponse.usage_metadata.prompt_token_count,
-                    completionToken=oResponse.usage_metadata.candidates_token_count,
-                    totalTokens=oResponse.usage_metadata.total_token_count,
-                    response=response_text,
-                    createdBy = user.id, 
-                    updatedBy = user.id, 
-                    createdAt = now, 
-                    updatedAt = now,
-            )
-            self.save(oAcitvityLog)
-            self.db_session.commit()
-            response_json = json.loads(oResponse.text)
-            return SendSuccessResponse(
-                    data = response_json
-                )
+    #         oAcitvityLog = ActivityLog(
+    #                 dataSetId = 1,
+    #                 conversationId = 1,
+    #                 promptType = PROMPT_TYPE.PREDEFINED.value,
+    #                 promptToken=oResponse.usage_metadata.prompt_token_count,
+    #                 completionToken=oResponse.usage_metadata.candidates_token_count,
+    #                 totalTokens=oResponse.usage_metadata.total_token_count,
+    #                 response=response_text,
+    #                 createdBy = user.id, 
+    #                 updatedBy = user.id, 
+    #                 createdAt = now, 
+    #                 updatedAt = now,
+    #         )
+    #         self.save(oAcitvityLog)
+    #         self.db_session.commit()
+    #         response_json = json.loads(oResponse.text)
+    #         return SendSuccessResponse(
+    #                 data = response_json
+    #             )
             
-        except Exception as error:
-            raise error
-            return SendErrorResponse(
-                message = error
-            )
+    #     except Exception as error:
+    #         raise error
+    #         return SendErrorResponse(
+    #             message = error
+    #         )
          
