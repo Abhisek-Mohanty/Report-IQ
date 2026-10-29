@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useAnalyticsStore } from "@/store/useAnalyticsStore";
 import { analyzeDataset, exampleRows } from "@/utils/dataOperations";
 import { toast } from "@/components/ui/toast";
@@ -35,7 +35,8 @@ import {
   Search,
   CheckSquare,
   Square,
-  ExternalLink
+  ExternalLink,
+  Lock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import * as XLSX from "xlsx";
@@ -193,6 +194,13 @@ export function AiInsightsView() {
 
   // AI Scenarios & Relationships state
   const [scenarios, setScenarios] = useState<AiScenario[]>([]);
+
+  // Keep active tab on "relationships" while dependent tabs remain locked
+  useEffect(() => {
+    if (scenarios.length === 0 && activeTabMode !== "relationships") {
+      setActiveTabMode("relationships");
+    }
+  }, [scenarios.length, activeTabMode]);
   const [datasetSummary, setDatasetSummary] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [selectedScenarioIds, setSelectedScenarioIds] = useState<Set<string>>(new Set());
@@ -1163,7 +1171,7 @@ export function AiInsightsView() {
               </div>
 
               {/* Ready to Summarize with Pivot Tables Button */}
-              <div className="shrink-0 flex items-center gap-3">
+              {/* <div className="shrink-0 flex items-center gap-3">
                 <Button
                   size="lg"
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-600/20 gap-2 text-sm px-6 h-12"
@@ -1178,7 +1186,7 @@ export function AiInsightsView() {
                   <span>{isAnalyzing ? "Analyzing Relationships..." : "Summarize with Pivot Tables & AI"}</span>
                   <ArrowRight className="h-4 w-4 ml-1" />
                 </Button>
-              </div>
+              </div> */}
 
             </div>
 
@@ -1201,48 +1209,67 @@ export function AiInsightsView() {
                 )}
               </button>
               <button
-                onClick={() => setActiveTabMode("dashboard")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTabMode === "dashboard"
-                  ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/20"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
+                disabled={scenarios.length === 0}
+                onClick={() => scenarios.length > 0 && setActiveTabMode("dashboard")}
+                title={scenarios.length === 0 ? "Discover AI Column Relationships to unlock Executive Dashboard" : undefined}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                  scenarios.length === 0
+                    ? "opacity-45 cursor-not-allowed text-muted-foreground hover:bg-transparent select-none"
+                    : activeTabMode === "dashboard"
+                    ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/20"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
               >
-                <BarChart3 className="h-3.5 w-3.5 text-indigo-400" />
+                <BarChart3 className={`h-3.5 w-3.5 ${scenarios.length === 0 ? "text-muted-foreground" : "text-indigo-400"}`} />
                 <span>Executive Dashboard</span>
-                {currentReportEntry && (
+                {scenarios.length === 0 ? (
+                  <Lock className="h-3 w-3 text-muted-foreground/60" />
+                ) : currentReportEntry ? (
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                )}
+                ) : null}
               </button>
               <button
-                onClick={() => setActiveTabMode("pivot")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTabMode === "pivot"
-                  ? "bg-emerald-600 text-white shadow-sm"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
+                disabled={scenarios.length === 0}
+                onClick={() => scenarios.length > 0 && setActiveTabMode("pivot")}
+                title={scenarios.length === 0 ? "Discover AI Column Relationships to unlock Pivot Table Matrix" : undefined}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                  scenarios.length === 0
+                    ? "opacity-45 cursor-not-allowed text-muted-foreground hover:bg-transparent select-none"
+                    : activeTabMode === "pivot"
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
               >
                 <Grid3X3 className="h-3.5 w-3.5" />
                 <span>Pivot Table Summary Matrix</span>
+                {scenarios.length === 0 && <Lock className="h-3 w-3 text-muted-foreground/60" />}
               </button>
               <button
-                onClick={() => setActiveTabMode("profile")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTabMode === "profile"
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
+                disabled={scenarios.length === 0}
+                onClick={() => scenarios.length > 0 && setActiveTabMode("profile")}
+                title={scenarios.length === 0 ? "Discover AI Column Relationships to unlock Data Health Profiler" : undefined}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                  scenarios.length === 0
+                    ? "opacity-45 cursor-not-allowed text-muted-foreground hover:bg-transparent select-none"
+                    : activeTabMode === "profile"
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
               >
                 <Activity className="h-3.5 w-3.5" />
                 <span>Data Health & Column Profiler</span>
+                {scenarios.length === 0 && <Lock className="h-3 w-3 text-muted-foreground/60" />}
               </button>
 
               <div className="ml-auto flex items-center gap-2">
-                <button
+                {/* <button
                   onClick={handleLoadSampleDashboard}
                   className="text-xs px-2.5 py-1 rounded-md border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-700 flex items-center gap-1.5 transition-colors shrink-0"
                   title="Load the sample Loan Portfolio Executive BI Dashboard"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                   <span>Sample Dashboard</span>
-                </button>
+                </button> */}
               </div>
             </div>
           </div>
@@ -1637,7 +1664,7 @@ export function AiInsightsView() {
                       <span>{isAnalyzing ? "Scanning Relationships..." : "Discover Relationships with AI"}</span>
                     </Button>
 
-                    <Button
+                    {/* <Button
                       variant="outline"
                       size="lg"
                       onClick={loadSampleScenarios}
@@ -1645,7 +1672,7 @@ export function AiInsightsView() {
                     >
                       <Database className="h-4 w-4 text-emerald-500" />
                       <span>Load Sample Lending Scenarios</span>
-                    </Button>
+                    </Button> */}
 
                     <Button
                       variant="outline"
@@ -1653,7 +1680,8 @@ export function AiInsightsView() {
                       onClick={() => setIsCustomModalOpen(true)}
                       className="gap-2 text-xs font-semibold h-11 text-foreground"
                     >
-                      <Plus className="h-4 w-4 text-primary" />
+                      {/* <Plus className="h-4 w-4 text-primary" /> */}
+                      <Database className="h-4 w-4 text-emerald-500" />
                       <span>+ Custom Relationship</span>
                     </Button>
                   </div>
