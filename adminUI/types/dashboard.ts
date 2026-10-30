@@ -129,6 +129,12 @@ export interface ChartSpec {
   currency?: string | null;
   unit?: string | null;
   percentScale?: string | null;
+  validation?: {
+    isValid: boolean;
+    reason?: string;
+    details?: string;
+    isUnsupportedType?: boolean;
+  };
 }
 
 export interface ScenarioAnalysisItem {

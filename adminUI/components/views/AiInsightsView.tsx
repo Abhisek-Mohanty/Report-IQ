@@ -47,7 +47,7 @@ import { prepareDetailedAnalysisPayload } from "@/utils/scenarioAnalyzer";
 import { AnalysisDashboardView } from "./AnalysisDashboardView";
 import { AnalysisDashboardData } from "@/types/dashboard";
 import { SAMPLE_ANALYSIS_DASHBOARD } from "@/utils/sampleReportData";
-import { EXAMPLE_LOAN_PORTFOLIO_PAYLOAD } from "@/utils/jsonPointerResolver";
+import { EXAMPLE_LOAN_PORTFOLIO_PAYLOAD, validateChartSpec, resolveJsonPointer } from "@/utils/jsonPointerResolver";
 
 type AggFunction = "sum" | "avg" | "count" | "min" | "max";
 
@@ -173,10 +173,22 @@ export function AiInsightsView() {
   const currentReportEntry = reportsBySheet[currentSheetKey] || null;
 
   const handleLoadSampleDashboard = () => {
+    const sampleReport = JSON.parse(JSON.stringify(SAMPLE_ANALYSIS_DASHBOARD));
+    const scenarioItems = sampleReport?.scenarioAnalysis || [];
+    if (Array.isArray(scenarioItems)) {
+      scenarioItems.forEach((scenario: any) => {
+        if (Array.isArray(scenario.charts)) {
+          scenario.charts.forEach((chart: any) => {
+            const resolvedData = resolveJsonPointer(EXAMPLE_LOAN_PORTFOLIO_PAYLOAD, chart.dataRef);
+            chart.validation = validateChartSpec(chart, resolvedData);
+          });
+        }
+      });
+    }
     setReportsBySheet((prev) => ({
       ...prev,
       [currentSheetKey]: {
-        report: SAMPLE_ANALYSIS_DASHBOARD,
+        report: sampleReport,
         payload: EXAMPLE_LOAN_PORTFOLIO_PAYLOAD,
         createdAt: Date.now(),
       },
@@ -329,6 +341,25 @@ export function AiInsightsView() {
       const response = await api.post("/aiInsights/detailedAnalysis", payload);
       const resData = response.data?.data || response.data;
       console.log("Detailed AI Analysis Response:", resData);
+
+      // Validate every chart spec returned in the AI response using validateChartSpec
+      const scenarioItems = resData?.scenarioAnalysis || resData?.scenarioAnalyses || [];
+      if (Array.isArray(scenarioItems)) {
+        scenarioItems.forEach((scenario: any) => {
+          if (Array.isArray(scenario.charts)) {
+            scenario.charts.forEach((chart: any) => {
+              const resolvedData = resolveJsonPointer(payload, chart.dataRef);
+              chart.validation = validateChartSpec(chart, resolvedData);
+            });
+          }
+        });
+      }
+      if (Array.isArray(resData?.charts)) {
+        resData.charts.forEach((chart: any) => {
+          const resolvedData = resolveJsonPointer(payload, chart.dataRef);
+          chart.validation = validateChartSpec(chart, resolvedData);
+        });
+      }
 
       setReportsBySheet((prev) => ({
         ...prev,

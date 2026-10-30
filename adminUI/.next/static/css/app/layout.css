@@ -1090,6 +1090,9 @@ body{
 .min-w-full{
   min-width: 100%;
 }
+.min-w-\[180px\]{
+  min-width: 180px;
+}
 .max-w-2xl{
   max-width: 42rem;
 }
@@ -2591,6 +2594,10 @@ body{
 .text-white{
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+}
+.text-violet-400{
+  --tw-text-opacity: 1;
+  color: rgb(167 139 250 / var(--tw-text-opacity, 1));
 }
 .antialiased{
   -webkit-font-smoothing: antialiased;

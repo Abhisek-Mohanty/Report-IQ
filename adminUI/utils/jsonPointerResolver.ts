@@ -220,6 +220,106 @@ export interface ChartValidationResult {
  * - Pareto charts need cumulative shares
  * - Dimension and measure exist in referenced data
  */
+/**
+ * Helper to resolve the active X (dimension) and Y (measure) keys from a data item,
+ * with fallbacks for aggregated scenario outputs (average, sum, value, count).
+ */
+export function resolveChartDataKeys(
+  firstItem: Record<string, any> | undefined | null,
+  chart: { dimension?: string; measure?: string; aggregation?: string }
+): { xKey: string; yKey: string; xFound: boolean; yFound: boolean } {
+  if (!firstItem || typeof firstItem !== "object") {
+    return { xKey: "x", yKey: "y", xFound: false, yFound: false };
+  }
+
+  const keys = Object.keys(firstItem);
+  if (keys.length === 0) {
+    return { xKey: "x", yKey: "y", xFound: false, yFound: false };
+  }
+
+  // Resolve X-key (Dimension)
+  let xKey: string = "";
+  let xFound = false;
+  if (chart.dimension && chart.dimension in firstItem) {
+    xKey = chart.dimension;
+    xFound = true;
+  } else if (chart.dimension) {
+    const ciMatch = keys.find((k) => k.toLowerCase() === chart.dimension!.toLowerCase());
+    if (ciMatch) {
+      xKey = ciMatch;
+      xFound = true;
+    }
+  }
+
+  if (!xKey) {
+    if ("x" in firstItem) {
+      xKey = "x";
+      xFound = true;
+    } else {
+      xKey = keys[0];
+      xFound = true;
+    }
+  }
+
+  // Resolve Y-key (Measure)
+  let yKey: string = "";
+  let yFound = false;
+  if (chart.measure && chart.measure in firstItem) {
+    yKey = chart.measure;
+    yFound = true;
+  } else if (chart.measure) {
+    const ciMatch = keys.find((k) => k.toLowerCase() === chart.measure!.toLowerCase());
+    if (ciMatch) {
+      yKey = ciMatch;
+      yFound = true;
+    }
+  }
+
+  if (!yKey) {
+    const agg = (chart.aggregation || "").toLowerCase();
+    if (agg === "sum" && "sum" in firstItem) {
+      yKey = "sum";
+      yFound = true;
+    } else if (agg === "count" && "count" in firstItem) {
+      yKey = "count";
+      yFound = true;
+    } else if ("average" in firstItem) {
+      yKey = "average";
+      yFound = true;
+    } else if ("mean" in firstItem) {
+      yKey = "mean";
+      yFound = true;
+    } else if ("sum" in firstItem) {
+      yKey = "sum";
+      yFound = true;
+    } else if ("value" in firstItem) {
+      yKey = "value";
+      yFound = true;
+    } else if ("y" in firstItem) {
+      yKey = "y";
+      yFound = true;
+    } else if ("count" in firstItem) {
+      yKey = "count";
+      yFound = true;
+    } else {
+      // Find first numeric key that isn't xKey
+      const numKey = keys.find((k) => k !== xKey && typeof firstItem[k] === "number");
+      if (numKey) {
+        yKey = numKey;
+        yFound = true;
+      }
+    }
+  }
+
+  if (!yKey) {
+    const fallback = keys.find((k) => k !== xKey) || keys[1] || keys[0];
+    yKey = fallback;
+    yFound = !!fallback;
+  }
+
+  return { xKey, yKey, xFound, yFound };
+}
+
 export function validateChartSpec(
   chart: ChartSpec,
   resolvedData: any
@@ -323,7 +423,62 @@ export function validateChartSpec(
     return { isValid: true };
   }
 
-  // 4. Standard series charts (pie, donut, bar, column, line, area, horizontal_bar)
+  // 4. Scatter plot validation
+  if (type === "scatter" || type === "scatterplot") {
+    if (!Array.isArray(resolvedData) || resolvedData.length === 0) {
+      return {
+        isValid: false,
+        reason: "Scatter plot requires paired data points.",
+        details: "The referenced dataset is empty or not formatted as a list of coordinate records.",
+      };
+    }
+
+    const first = resolvedData[0];
+    if (typeof first !== "object" || first === null) {
+      return {
+        isValid: false,
+        reason: "Unsupported data format for scatter plot.",
+        details: "Expected an array of data points with numeric coordinates.",
+      };
+    }
+
+    const { xKey, yKey, xFound, yFound } = resolveChartDataKeys(first, chart);
+    const keys = Object.keys(first);
+
+    if (!xFound || !(xKey in first)) {
+      return {
+        isValid: false,
+        reason: `Scatter plot X-axis dimension "${chart.dimension || xKey}" not found in referenced data.`,
+        details: `Available fields: ${keys.join(", ")}.`,
+      };
+    }
+
+    if (!yFound || !(yKey in first)) {
+      return {
+        isValid: false,
+        reason: `Scatter plot Y-axis measure "${chart.measure || yKey}" not found in referenced data.`,
+        details: `Available fields: ${keys.join(", ")}.`,
+      };
+    }
+
+    // Verify Y-axis contains at least some numeric values
+    const hasNumericY = resolvedData.some((r) => {
+      const v = r[yKey];
+      return v !== null && v !== undefined && v !== "" && !isNaN(Number(v));
+    });
+
+    if (!hasNumericY) {
+      return {
+        isValid: false,
+        reason: `Scatter plot measure "${chart.measure || yKey}" does not contain numeric values.`,
+        details: "Scatter plots require numerical values for the Y coordinate.",
+      };
+    }
+
+    return { isValid: true };
+  }
+
+  // 5. Standard series charts (pie, donut, bar, column, line, area, horizontal_bar)
   if (Array.isArray(resolvedData)) {
     if (resolvedData.length === 0) {
       return {

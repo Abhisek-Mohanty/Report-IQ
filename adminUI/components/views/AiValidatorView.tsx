@@ -476,9 +476,7 @@ export function AiValidatorView() {
   // =========================================================================
   // WRITE PROMPT & MULTI-TURN AI CLARIFICATION STATE
   // =========================================================================
-  const [userPromptText, setUserPromptText] = useState<string>(
-    "Reconcile active portfolio against reference spreadsheet on Application Number, verify Sanction Amount equality with ₹1.00 tolerance, and audit credit policy loan caps under ₹2,500,000."
-  );
+  const [userPromptText, setUserPromptText] = useState<string>("");
   const [hasSynthesizedRequest, setHasSynthesizedRequest] = useState<boolean>(false);
   const [chatMessages, setChatMessages] = useState<ChatInteractionMessage[]>([]);
   const [chatInputText, setChatInputText] = useState<string>("");
@@ -1324,7 +1322,7 @@ export function AiValidatorView() {
               <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
               {showUserGuide ? "Hide User Guide" : "User Guide & Steps"}
             </Button>
-            <Button
+            {/* <Button
               variant="outline"
               size="sm"
               onClick={handleLoadDemoPackage}
@@ -1332,7 +1330,7 @@ export function AiValidatorView() {
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
               Load Demo Package
-            </Button>
+            </Button> */}
           </div>
         </div>
 
@@ -2501,7 +2499,7 @@ export function AiValidatorView() {
           />
 
           {/* Quick Prompt Recommendation Chips */}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs pt-1">
+          {/* <div className="flex flex-wrap items-center gap-1.5 text-xs pt-1">
             <span className="text-[11px] text-slate-500 font-semibold">Quick Prompts:</span>
             {[
               "Calculate total Lender Disbursed Amount by Agent",
@@ -2519,7 +2517,7 @@ export function AiValidatorView() {
                 {prompt}
               </button>
             ))}
-          </div>
+          </div> */}
         </div>
 
         {/* Action Controls & Synthesize Button */}

@@ -20,6 +20,7 @@ import {
   formatMetricValue,
   resolveTemplate,
   validateChartSpec,
+  resolveChartDataKeys,
   computeColumnDiagnostics,
   ColumnDiagnostics,
   EXAMPLE_LOAN_PORTFOLIO_PAYLOAD,
@@ -78,6 +79,9 @@ import {
   Tooltip as RechartsTooltip,
   Legend,
   ReferenceLine,
+  ScatterChart,
+  Scatter,
+  ZAxis,
 } from "recharts";
 
 const PALETTE = [
@@ -711,7 +715,9 @@ export function AnalysisDashboardView({
                         const chartKey = `${scenario.scenarioId}-chart-${cIdx}`;
                         const viewMode = chartViewModes[chartKey] || "chart";
                         const resolvedChartData = resolveJsonPointer(payload, chartSpec.dataRef);
-                        const validation = validateChartSpec(chartSpec, resolvedChartData);
+                        const validation = chartSpec.validation || validateChartSpec(chartSpec, resolvedChartData);
+                        console.log(validation);
+                        
 
                         return (
                           <div
@@ -721,7 +727,15 @@ export function AnalysisDashboardView({
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                               <div className="space-y-1">
                                 <div className="flex items-center gap-2">
-                                  <BarChart3 className="w-4 h-4 text-indigo-400" />
+                                  {chartSpec.type === "pie" || chartSpec.type === "donut" ? (
+                                    <PieChartIcon className="w-4 h-4 text-amber-400" />
+                                  ) : chartSpec.type === "line" ? (
+                                    <TrendingUp className="w-4 h-4 text-indigo-400" />
+                                  ) : chartSpec.type === "scatter" ? (
+                                    <Activity className="w-4 h-4 text-violet-400" />
+                                  ) : (
+                                    <BarChart3 className="w-4 h-4 text-indigo-400" />
+                                  )}
                                   <h4 className="text-sm font-bold text-white">
                                     {chartSpec.title}
                                   </h4>
@@ -812,126 +826,267 @@ export function AnalysisDashboardView({
                               <div className="h-64 sm:h-72 w-full pt-2">
                                 <ResponsiveContainer width="100%" height="100%">
                                   {chartSpec.type === "pie" || chartSpec.type === "donut" ? (
-                                    <PieChart>
-                                      <RechartsTooltip
-                                        contentStyle={{
-                                          backgroundColor: "#0f172a",
-                                          borderColor: "#334155",
-                                          borderRadius: "8px",
-                                          fontSize: "12px",
-                                        }}
-                                      />
-                                      <Legend
-                                        verticalAlign="bottom"
-                                        height={36}
-                                        formatter={(val) => (
-                                          <span className="text-xs text-slate-300">{val}</span>
-                                        )}
-                                      />
-                                      <Pie
-                                        data={resolvedChartData}
-                                        dataKey={chartSpec.measure || "count"}
-                                        nameKey={chartSpec.dimension || Object.keys(resolvedChartData[0])[0]}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={chartSpec.type === "donut" ? 55 : 0}
-                                        outerRadius={80}
-                                        paddingAngle={2}
-                                      >
-                                        {resolvedChartData.map((entry: any, eIdx: number) => {
-                                          const dimVal = String(
-                                            entry[chartSpec.dimension] || entry[Object.keys(entry)[0]]
-                                          );
-                                          const isHighlighted =
-                                            chartSpec.highlight?.itemRef &&
-                                            dimVal === chartSpec.highlight.itemRef;
+                                    (() => {
+                                      const firstItem = resolvedChartData[0] || {};
+                                      const { xKey: pieDim, yKey: pieMeas } = resolveChartDataKeys(firstItem, chartSpec);
+                                      return (
+                                        <PieChart>
+                                          <RechartsTooltip
+                                            contentStyle={{
+                                              backgroundColor: "#0f172a",
+                                              borderColor: "#334155",
+                                              borderRadius: "8px",
+                                              fontSize: "12px",
+                                            }}
+                                          />
+                                          <Legend
+                                            verticalAlign="bottom"
+                                            height={36}
+                                            formatter={(val) => (
+                                              <span className="text-xs text-slate-300">{val}</span>
+                                            )}
+                                          />
+                                          <Pie
+                                            data={resolvedChartData}
+                                            dataKey={pieMeas}
+                                            nameKey={pieDim}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={chartSpec.type === "donut" ? 55 : 0}
+                                            outerRadius={80}
+                                            paddingAngle={2}
+                                          >
+                                            {resolvedChartData.map((entry: any, eIdx: number) => {
+                                              const dimVal = String(entry[pieDim] ?? entry[Object.keys(entry)[0]]);
+                                              const isHighlighted =
+                                                chartSpec.highlight?.itemRef &&
+                                                dimVal === chartSpec.highlight.itemRef;
 
-                                          const color = isHighlighted
-                                            ? chartSpec.highlight?.tone === "negative"
-                                              ? "#e11d48"
-                                              : "#6366f1"
-                                            : PALETTE[eIdx % PALETTE.length];
+                                              const color = isHighlighted
+                                                ? chartSpec.highlight?.tone === "negative"
+                                                  ? "#e11d48"
+                                                  : "#6366f1"
+                                                : PALETTE[eIdx % PALETTE.length];
 
-                                          return <Cell key={`cell-${eIdx}`} fill={color} />;
-                                        })}
-                                      </Pie>
-                                    </PieChart>
+                                              return <Cell key={`cell-${eIdx}`} fill={color} />;
+                                            })}
+                                          </Pie>
+                                        </PieChart>
+                                      );
+                                    })()
                                   ) : chartSpec.type === "line" ? (
-                                    <LineChart data={resolvedChartData}>
-                                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                      <XAxis
-                                        dataKey={chartSpec.dimension || Object.keys(resolvedChartData[0])[0]}
-                                        stroke="#64748b"
-                                        fontSize={11}
-                                      />
-                                      <YAxis stroke="#64748b" fontSize={11} />
-                                      <RechartsTooltip
-                                        contentStyle={{
-                                          backgroundColor: "#0f172a",
-                                          borderColor: "#334155",
-                                          borderRadius: "8px",
-                                          fontSize: "12px",
-                                        }}
-                                      />
-                                      <Line
-                                        type="monotone"
-                                        dataKey={chartSpec.measure || Object.keys(resolvedChartData[0])[1]}
-                                        stroke="#6366f1"
-                                        strokeWidth={2.5}
-                                        dot={{ fill: "#6366f1", r: 4 }}
-                                      />
-                                    </LineChart>
+                                    (() => {
+                                      const firstItem = resolvedChartData[0] || {};
+                                      const { xKey: lineDim, yKey: lineMeas } = resolveChartDataKeys(firstItem, chartSpec);
+                                      return (
+                                        <LineChart data={resolvedChartData}>
+                                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                          <XAxis
+                                            dataKey={lineDim}
+                                            stroke="#64748b"
+                                            fontSize={11}
+                                          />
+                                          <YAxis stroke="#64748b" fontSize={11} />
+                                          <RechartsTooltip
+                                            contentStyle={{
+                                              backgroundColor: "#0f172a",
+                                              borderColor: "#334155",
+                                              borderRadius: "8px",
+                                              fontSize: "12px",
+                                            }}
+                                          />
+                                          <Line
+                                            type="monotone"
+                                            dataKey={lineMeas}
+                                            stroke="#6366f1"
+                                            strokeWidth={2.5}
+                                            dot={{ fill: "#6366f1", r: 4 }}
+                                          />
+                                        </LineChart>
+                                      );
+                                    })()
+                                  ) : chartSpec.type === "scatter" ? (
+                                    /* Scatter Plot Chart */
+                                    (() => {
+                                      const firstItem = resolvedChartData[0] || {};
+                                      const { xKey, yKey } = resolveChartDataKeys(firstItem, chartSpec);
+
+                                      const scatterPoints = resolvedChartData.map((item: any, idx: number) => {
+                                        const rawX = item[xKey];
+                                        const rawY = item[yKey];
+                                        const numX = Number(rawX);
+                                        const numY = Number(rawY);
+                                        return {
+                                          ...item,
+                                          [xKey]: isNaN(numX) ? rawX : numX,
+                                          [yKey]: isNaN(numY) ? 0 : numY,
+                                          name: item.name || item.label || String(rawX ?? `Point ${idx + 1}`),
+                                        };
+                                      });
+
+                                      const isXNumeric =
+                                        scatterPoints.length > 0 &&
+                                        scatterPoints.every((pt: any) => typeof pt[xKey] === "number" && !isNaN(pt[xKey]));
+
+                                      const formatTick = (val: any) => {
+                                        if (typeof val === "number") {
+                                          const abs = Math.abs(val);
+                                          if (abs >= 1_000_00) return `${(val / 1_000_00).toFixed(1)}L`;
+                                          if (abs >= 1_000) return `${(val / 1_000).toFixed(0)}k`;
+                                          return String(val);
+                                        }
+                                        return String(val);
+                                      };                                      
+
+                                      return (
+                                        <ScatterChart margin={{ top: 10, right: 25, left: 10, bottom: 20 }}>
+                                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                          <XAxis
+                                            dataKey={xKey}
+                                            name={chartSpec.dimension || xKey}
+                                            stroke="#64748b"
+                                            fontSize={11}
+                                            type={isXNumeric ? "number" : "category"}
+                                            tick={{ fill: "#64748b", fontSize: 11 }}
+                                            tickFormatter={isXNumeric ? formatTick : undefined}
+                                          />
+                                          <YAxis
+                                            dataKey={yKey}
+                                            name={chartSpec.measure || yKey}
+                                            stroke="#64748b"
+                                            fontSize={11}
+                                            type="number"
+                                            tick={{ fill: "#64748b", fontSize: 11 }}
+                                            tickFormatter={formatTick}
+                                          />
+                                          <ZAxis range={[60, 180]} />
+                                          <RechartsTooltip
+                                            cursor={{ strokeDasharray: "3 3" }}
+                                            content={({ active, payload: ttPayload }) => {
+                                              if (!active || !ttPayload || !ttPayload.length) return null;
+                                              const pt = ttPayload[0]?.payload;
+                                              if (!pt) return null;
+                                              return (
+                                                <div className="bg-slate-900 border border-slate-700 p-2.5 rounded-lg shadow-xl text-xs space-y-1.5 min-w-[180px]">
+                                                  <div className="font-semibold text-slate-200 border-b border-slate-800 pb-1">
+                                                    {chartSpec.dimension || xKey}: {formatMetricValue(pt[xKey], { format: chartSpec.format, currency: chartSpec.currency })}
+                                                  </div>
+                                                  <div className="flex items-center justify-between gap-4 text-indigo-300">
+                                                    <span className="text-slate-400">{chartSpec.measure || yKey}:</span>
+                                                    <span className="font-mono font-semibold">
+                                                      {formatMetricValue(pt[yKey], { format: chartSpec.format, currency: chartSpec.currency })}
+                                                    </span>
+                                                  </div>
+                                                  {pt.count !== undefined && (
+                                                    <div className="flex items-center justify-between gap-4 text-slate-400 text-[11px]">
+                                                      <span>Records (count):</span>
+                                                      <span className="font-mono text-slate-300">{pt.count}</span>
+                                                    </div>
+                                                  )}
+                                                  {pt.sum !== undefined && yKey !== "sum" && (
+                                                    <div className="flex items-center justify-between gap-4 text-slate-400 text-[11px]">
+                                                      <span>Total sum:</span>
+                                                      <span className="font-mono text-slate-300">
+                                                        {formatMetricValue(pt.sum, { format: chartSpec.format, currency: chartSpec.currency })}
+                                                      </span>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              );
+                                            }}
+                                          />
+                                          {chartSpec.benchmarkRef && (
+                                            <ReferenceLine
+                                              y={Number(resolveJsonPointer(payload, chartSpec.benchmarkRef)) || undefined}
+                                              stroke="#e11d48"
+                                              strokeDasharray="3 3"
+                                              label={{
+                                                value: "Benchmark",
+                                                fill: "#f43f5e",
+                                                fontSize: 10,
+                                              }}
+                                            />
+                                          )}
+                                          <Scatter
+                                            name={chartSpec.title || `${chartSpec.dimension || xKey} vs ${chartSpec.measure || yKey}`}
+                                            data={scatterPoints}
+                                            fill="#6366f1"
+                                          >
+                                            {scatterPoints.map((entry: any, eIdx: number) => {
+                                              const dimVal = String(entry[xKey] ?? entry.name);
+                                              const isHighlighted =
+                                                chartSpec.highlight?.itemRef &&
+                                                dimVal === chartSpec.highlight.itemRef;
+                                              const color = isHighlighted
+                                                ? chartSpec.highlight?.tone === "negative"
+                                                  ? "#e11d48"
+                                                  : "#6366f1"
+                                                : PALETTE[eIdx % PALETTE.length];
+                                              return (
+                                                <Cell key={`scatter-cell-${eIdx}`} fill={color} />
+                                              );
+                                            })}
+                                          </Scatter>
+                                        </ScatterChart>
+                                      );
+                                    })()
                                   ) : (
                                     /* Bar / Column Chart */
-                                    <BarChart data={resolvedChartData}>
-                                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                      <XAxis
-                                        dataKey={chartSpec.dimension || Object.keys(resolvedChartData[0])[0]}
-                                        stroke="#64748b"
-                                        fontSize={11}
-                                      />
-                                      <YAxis stroke="#64748b" fontSize={11} />
-                                      <RechartsTooltip
-                                        contentStyle={{
-                                          backgroundColor: "#0f172a",
-                                          borderColor: "#334155",
-                                          borderRadius: "8px",
-                                          fontSize: "12px",
-                                        }}
-                                      />
-                                      {chartSpec.benchmarkRef && (
-                                        <ReferenceLine
-                                          y={Number(resolveJsonPointer(payload, chartSpec.benchmarkRef)) || undefined}
-                                          stroke="#e11d48"
-                                          strokeDasharray="3 3"
-                                          label={{
-                                            value: "Benchmark",
-                                            fill: "#f43f5e",
-                                            fontSize: 10,
-                                          }}
-                                        />
-                                      )}
-                                      <Bar
-                                        dataKey={chartSpec.measure || Object.keys(resolvedChartData[0])[1]}
-                                        fill="#6366f1"
-                                        radius={[4, 4, 0, 0]}
-                                      >
-                                        {resolvedChartData.map((entry: any, eIdx: number) => {
-                                          const dimVal = String(
-                                            entry[chartSpec.dimension] || entry[Object.keys(entry)[0]]
-                                          );
-                                          const isHighlighted =
-                                            chartSpec.highlight?.itemRef &&
-                                            dimVal === chartSpec.highlight.itemRef;
-                                          return (
-                                            <Cell
-                                              key={`bar-${eIdx}`}
-                                              fill={isHighlighted ? "#ec4899" : PALETTE[eIdx % PALETTE.length]}
+                                    (() => {
+                                      const firstItem = resolvedChartData[0] || {};
+                                      const { xKey: barX, yKey: barY } = resolveChartDataKeys(firstItem, chartSpec);
+                                      return (
+                                        <BarChart data={resolvedChartData}>
+                                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                          <XAxis
+                                            dataKey={barX}
+                                            stroke="#64748b"
+                                            fontSize={11}
+                                          />
+                                          <YAxis stroke="#64748b" fontSize={11} />
+                                          <RechartsTooltip
+                                            contentStyle={{
+                                              backgroundColor: "#0f172a",
+                                              borderColor: "#334155",
+                                              borderRadius: "8px",
+                                              fontSize: "12px",
+                                            }}
+                                          />
+                                          {chartSpec.benchmarkRef && (
+                                            <ReferenceLine
+                                              y={Number(resolveJsonPointer(payload, chartSpec.benchmarkRef)) || undefined}
+                                              stroke="#e11d48"
+                                              strokeDasharray="3 3"
+                                              label={{
+                                                value: "Benchmark",
+                                                fill: "#f43f5e",
+                                                fontSize: 10,
+                                              }}
                                             />
-                                          );
-                                        })}
-                                      </Bar>
-                                    </BarChart>
+                                          )}
+                                          <Bar
+                                            dataKey={barY}
+                                            fill="#6366f1"
+                                            radius={[4, 4, 0, 0]}
+                                          >
+                                            {resolvedChartData.map((entry: any, eIdx: number) => {
+                                              const dimVal = String(
+                                                entry[barX] ?? entry[Object.keys(entry)[0]]
+                                              );
+                                              const isHighlighted =
+                                                chartSpec.highlight?.itemRef &&
+                                                dimVal === chartSpec.highlight.itemRef;
+                                              return (
+                                                <Cell
+                                                  key={`bar-${eIdx}`}
+                                                  fill={isHighlighted ? "#ec4899" : PALETTE[eIdx % PALETTE.length]}
+                                                />
+                                              );
+                                            })}
+                                          </Bar>
+                                        </BarChart>
+                                      );
+                                    })()
                                   )}
                                 </ResponsiveContainer>
                               </div>
