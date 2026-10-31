@@ -1,27 +1,57 @@
+# Web Framework & Server
 fastapi
 uvicorn
+starlette
+python-multipart
+websockets
+fastapi-utilities
+
+# Database & ORM
+SQLAlchemy>=1.4.50,<2.0.0
 databases
-loguru
-PyJWT
-bcrypt==4.0.1
-passlib[bcrypt]==1.7.4
-orjson
 aiomysql
+
+# Security & Authentication
+PyJWT
+bcrypt>=4.0.1
+passlib[bcrypt]>=1.7.4
+cryptography
+Authlib
+
+# Data Validation & Serialization
+pydantic[email]>=2.0.0
+orjson
+python-dotenv
+python-dateutil
+
+# AI & LLM Services
+google-genai
+
+# Data Processing & Numerical
+pandas
+numpy
+
+# Cloud & Storage
 boto3
+
+# HTTP & Networking
 requests
-pip install pydantic[email]
+httpx
+chardet
+
+# Logging & Monitoring
+loguru
+
+# Document, Image & Media Generation
 xmltodict
 dicttoxml
 qrcode
-image
+Pillow
 pdfkit
-# requests_pkcs12
-# pillow_heif
-python-multipart
-websockets
-fastapi_utilities
-SQLAlchemy==1.4.50
+docx2pdf
+ftfy
+psycopg2
 
-pip install docx2pdf
-pip install pypiwin32
-# pip install -r requirements.txt
+# Windows Specific (optional/conditional)
+pypiwin32; sys_platform == 'win32'
+stall -r requirements.txt
