@@ -55,7 +55,6 @@ def get_application() -> FastAPI:
 
     max_size = 50 * 1024 * 1024  # 50 megabytes                      
     application = FastAPI(middleware=middleware,
-                          max_size = max_size,
                           title=PROJECT_NAME, 
                           debug=DEBUG, 
                           version=VERSION, 
