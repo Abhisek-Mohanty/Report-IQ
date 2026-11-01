@@ -2,7 +2,6 @@ import logging
 import sys
 from typing import List
 
-from databases import DatabaseURL
 from loguru import logger
 from starlette.config import Config
 from starlette.datastructures import CommaSeparatedStrings, Secret
