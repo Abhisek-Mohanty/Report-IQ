@@ -10,6 +10,7 @@ fastapi-utilities
 SQLAlchemy>=1.4.50,<2.0.0
 databases
 aiomysql
+psycopg2-binary
 
 # Security & Authentication
 PyJWT
@@ -50,8 +51,6 @@ Pillow
 pdfkit
 docx2pdf
 ftfy
-psycopg2
 
 # Windows Specific (optional/conditional)
 pypiwin32; sys_platform == 'win32'
-stall -r requirements.txt

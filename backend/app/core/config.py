@@ -16,7 +16,10 @@ WEBHOOK_PREFIX  = "/webhook/v1"
 
 JWT_TOKEN_PREFIX = "Bearer"
 
-config = Config(".env")
+from pathlib import Path
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+env_file_path = BASE_DIR / ".env"
+config = Config(str(env_file_path) if env_file_path.exists() else ".env")
 
 VERSION: str = config("VERSION", cast=str, default="1.0.0")
 ENVIRONMENT: str = config("ENVIRONMENT", cast=str, default="prod")
@@ -25,15 +28,28 @@ DEBUG: bool = config("DEBUG", cast=bool, default=False)
 DEFAULT_PASSWORD: str = config("DEFAULT_PASSWORD", cast=str, default="Techfino@123")
 SUPPORT_MAILID: str = config("SUPPORT_MAILID", cast=str, default="support@techfino.in")
 
-MYSQL_DATABASE_URL: DatabaseURL = config("MYSQL_DB_CONNECTION", cast=DatabaseURL)
+# Database Selection: "supabase" (default) or "mysql"
+DB_TYPE: str = config("DB_TYPE", cast=str, default="supabase").lower()
+
+# Supabase (PostgreSQL) Configuration
+SUPABASE_HOST: str = config("SUPABASE_HOST", cast=str, default="aws-1-eu-west-3.pooler.supabase.com")
+SUPABASE_PORT: int = config("SUPABASE_PORT", cast=int, default=5432)
+SUPABASE_USER: str = config("SUPABASE_USER", cast=str, default="postgres.eatzroepoegkvxtqtcsl")
+SUPABASE_PWD: str = config("SUPABASE_PWD", cast=str, default="")
+SUPABASE_DB: str = config("SUPABASE_DB", cast=str, default="postgres")
+SUPABASE_DATABASE_URL: str = config("SUPABASE_DATABASE_URL", cast=str, default="")
+
+# MySQL Configuration
+MYSQL_DATABASE_URL: str = config("MYSQL_DB_CONNECTION", cast=str, default="")
+MYSQL_HOST: str = config("MYSQL_HOST", cast=str, default="127.0.0.1")
+MYSQL_PORT: int = config("MYSQL_PORT", cast=int, default=3306)
+MYSQL_USER: str = config("MYSQL_USER", cast=str, default="root")
+MYSQL_PWD: str = config("MYSQL_PWD", cast=str, default="")
+MYSQL_DB: str = config("MYSQL_DB", cast=str, default="")
+
 MAX_CONNECTIONS_COUNT: int = config("MAX_CONNECTIONS_COUNT", cast=int, default=10)
 MIN_CONNECTIONS_COUNT: int = config("MIN_CONNECTIONS_COUNT", cast=int, default=10)
-MYSQL_HOST:str = config("MYSQL_HOST",cast=str,default="127.0.0.1")
-MYSQL_PORT:int = config("MYSQL_PORT",cast=int,default=3306)
-MYSQL_USER:str = config("MYSQL_USER",cast=str,default="root")
-MYSQL_PWD:str  = config("MYSQL_PWD",cast=str,default="")
-MYSQL_DB:str   = config("MYSQL_DB",cast=str,default="")
-GOOGLE_GEMINI:str   = config("GOOGLE_GEMINI",cast=str,default="")
+GOOGLE_GEMINI: str = config("GOOGLE_GEMINI", cast=str, default="")
 
 
 SECRET_KEY: Secret = config("SECRET_KEY", cast=Secret)

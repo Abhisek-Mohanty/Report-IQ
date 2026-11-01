@@ -1081,6 +1081,9 @@ body{
 .min-w-\[170px\]{
   min-width: 170px;
 }
+.min-w-\[180px\]{
+  min-width: 180px;
+}
 .min-w-\[260px\]{
   min-width: 260px;
 }
@@ -1089,9 +1092,6 @@ body{
 }
 .min-w-full{
   min-width: 100%;
-}
-.min-w-\[180px\]{
-  min-width: 180px;
 }
 .max-w-2xl{
   max-width: 42rem;
@@ -2583,6 +2583,10 @@ body{
 .text-transparent{
   color: transparent;
 }
+.text-violet-400{
+  --tw-text-opacity: 1;
+  color: rgb(167 139 250 / var(--tw-text-opacity, 1));
+}
 .text-violet-500{
   --tw-text-opacity: 1;
   color: rgb(139 92 246 / var(--tw-text-opacity, 1));
@@ -2594,10 +2598,6 @@ body{
 .text-white{
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
-}
-.text-violet-400{
-  --tw-text-opacity: 1;
-  color: rgb(167 139 250 / var(--tw-text-opacity, 1));
 }
 .antialiased{
   -webkit-font-smoothing: antialiased;
@@ -3099,6 +3099,10 @@ body{
   background-color: rgb(16 185 129 / 0.9);
 }
 
+.hover\:bg-transparent:hover{
+  background-color: transparent;
+}
+
 .hover\:bg-violet-700:hover{
   --tw-bg-opacity: 1;
   background-color: rgb(109 40 217 / var(--tw-bg-opacity, 1));
@@ -3106,10 +3110,6 @@ body{
 
 .hover\:bg-white\/10:hover{
   background-color: rgb(255 255 255 / 0.1);
-}
-
-.hover\:bg-transparent:hover{
-  background-color: transparent;
 }
 
 .hover\:from-violet-700:hover{

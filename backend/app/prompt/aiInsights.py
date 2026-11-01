@@ -1790,7 +1790,7 @@ Use zero-based array indexes, never scenario ID values:
 
 Additional examples:
 - /analysisResults/1/groups/2/count
-- /dataset/summary/2/stats/mean
+- /summary/2/stats/mean
 
 Never use paths such as:
 - /analysisResults/s1/overall/rowCount
@@ -1803,7 +1803,7 @@ Original-layout examples:
 Normalized-layout examples:
 - /analysisResults/1/overall/rowCount
 - /analysisResults/1/groups/2/count
-- /dataset/summary/2/stats/mean
+- /summary/2/stats/mean
 
 Metadata examples:
 - /dataset/rowCount
@@ -2059,7 +2059,7 @@ severity: high | medium | low
 filter type: category | number | datetime
 filter operator: in | not_in | equals | greater_than | less_than | between
 chart type: bar | horizontal_bar | column | pie | donut | line |
-            scatter | histogram | pareto | table | kpi_card | bullet | box
+            scatter | histogram | pareto | table | kpi_card | bullet
 aggregation: none | count | sum | average | median
 sort: ascending | descending | none
 comparison operator: greater_than | less_than | equal | different
