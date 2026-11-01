@@ -2,6 +2,7 @@
 fastapi
 uvicorn
 starlette
+itsdangerous
 python-multipart
 websockets
 fastapi-utilities
