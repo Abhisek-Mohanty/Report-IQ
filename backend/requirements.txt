@@ -48,8 +48,8 @@ openai==3.35.1
 phidata==2.7.10
 
 # Data Analysis & Processing
-pandas==2.2.1
-numpy==1.26.4
+pandas
+numpy
 openpyxl==3.1.2
 XlsxWriter==3.2.0
 et-xmlfile==1.1.0
