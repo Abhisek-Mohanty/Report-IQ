@@ -29,6 +29,9 @@ SUPPORT_MAILID: str = config("SUPPORT_MAILID", cast=str, default="support@techfi
 
 # Database Selection: "supabase" (default) or "mysql"
 DB_TYPE: str = config("DB_TYPE", cast=str, default="supabase").lower()
+BASE_URL: str = config("BASE_URL", cast=str, default="/")
+REDIRECT_URL: str = config("REDIRECT_URL", cast=str, default="/")
+
 
 # Supabase (PostgreSQL) Configuration
 SUPABASE_HOST: str = config("SUPABASE_HOST", cast=str, default="aws-1-eu-west-3.pooler.supabase.com")

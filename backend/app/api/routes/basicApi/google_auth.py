@@ -47,7 +47,7 @@ oauth.register(
 # Redirect user to Google for authentication
 @router.get("/auth/google")
 async def auth_google(request: Request):
-    return await oauth.google.authorize_redirect(request, redirect_uri="http://localhost:8000/api/v1/auth/google/callback")
+    return await oauth.google.authorize_redirect(request, redirect_uri={config.BASE_URL}+"/auth/google/callback")
 
 
 # Handle the OAuth callback from Google
@@ -81,7 +81,7 @@ async def google_callback(
             raise UnauthorizedAccess(403,"Unauthorized Access")
         access_token = jwt.create_access_token_for_user(oUser,str(config.SECRET_KEY))
         oUser = jsonable_encoder(oUser)
-        frontend_url = "http://localhost:3000"
+        frontend_url = config.REDIRECT_URL
         params = urlencode({
                     "token": access_token,
                     "profile": json.dumps({
