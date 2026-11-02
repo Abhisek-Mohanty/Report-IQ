@@ -21,7 +21,7 @@ const LOGIN_IMAGES = [
 export function LoginModal({
   isOpen,
   onClose,
-  redirectUrl = "http://localhost:8000/api/v1/auth/google",
+  redirectUrl = process.env.NEXT_PUBLIC_API_URL+"/auth/google",
 }: LoginModalProps) {
   const [loginImage, setLoginImage] = React.useState(LOGIN_IMAGES[0]);
 
