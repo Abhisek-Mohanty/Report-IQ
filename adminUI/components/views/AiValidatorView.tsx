@@ -427,7 +427,7 @@ export function AiValidatorView() {
 
   // Active dataset and sheet resolution
   const activeDataset: Dataset | null = useMemo(() => {
-    return datasets.find((d) => d.id === selectedDatasetId) || datasets[0] || null;
+    return datasets.find((d:any) => d.id === selectedDatasetId) || datasets[0] || null;
   }, [datasets, selectedDatasetId]);
 
   const activeSheet: SheetData | null = useMemo(() => {
@@ -581,13 +581,13 @@ export function AiValidatorView() {
       }
 
       if (addedDatasets.length > 0) {
-        setRefDatasets((prev) => [...prev, ...addedDatasets]);
+        setRefDatasets((prev:any) => [...prev, ...addedDatasets]);
         if (!activeRefTab && addedDatasets[0]) setActiveRefTab(addedDatasets[0].id);
         toast.success(`Loaded ${addedDatasets.length} reference spreadsheet(s).`);
       }
 
       if (addedDocs.length > 0) {
-        setRefDocs((prev) => [...prev, ...addedDocs]);
+        setRefDocs((prev:any) => [...prev, ...addedDocs]);
         if (!activeRefTab && addedDocs[0]) setActiveRefTab(addedDocs[0].id);
         toast.success(`Extracted ${addedDocs.length} policy document(s).`);
       }
@@ -632,7 +632,7 @@ export function AiValidatorView() {
       exampleRows: examples,
     };
 
-    setRefDatasets((prev) => [...prev, newRef]);
+    setRefDatasets((prev:any) => [...prev, newRef]);
     setActiveRefTab(entryId);
     setIsWorkspaceModalOpen(false);
     toast.success(`Added ${ds.name} to reference sources (${targetSheet.headers.length} columns available).`);
@@ -720,7 +720,7 @@ export function AiValidatorView() {
 
   // Request Document AI Summary
   const handleRequestDocumentSummary = (docId: string) => {
-    const doc = refDocs.find((d) => d.id === docId);
+    const doc = refDocs.find((d:any) => d.id === docId);
     if (!doc) return;
 
     setSummarizingDocId(docId);
@@ -734,8 +734,8 @@ export function AiValidatorView() {
       ];
 
       // Update doc entry
-      setRefDocs((prev) =>
-        prev.map((d) =>
+      setRefDocs((prev:any) =>
+        prev.map((d:any) =>
           d.id === docId ? { ...d, summary: summaryText, extractedRules: generatedRules } : d
         )
       );
@@ -754,8 +754,8 @@ export function AiValidatorView() {
         suggestedAction: "Evaluate active portfolio against document credit criteria.",
       };
 
-      setScenarioRules((prev) => [newScenario, ...prev]);
-      setSelectedScenarioIds((prev) => new Set([...prev, newScenario.id]));
+      setScenarioRules((prev:any) => [newScenario, ...prev]);
+      setSelectedScenarioIds((prev:any) => new Set([...prev, newScenario.id]));
       setSummarizingDocId(null);
 
       toast.dismiss(`doc-sum-${docId}`);
@@ -776,7 +776,7 @@ export function AiValidatorView() {
       questions,
       suggestedRules,
     };
-    setChatMessages((prev) => [...prev, msg]);
+    setChatMessages((prev:any) => [...prev, msg]);
   };
 
   // Build unified payload with provided conversation history
@@ -786,11 +786,11 @@ export function AiValidatorView() {
     const historyToUse = history || chatMessages;
     const currentPrompt =
       userPromptText.trim() ||
-      historyToUse.find((m) => m.sender === "user")?.text ||
+      historyToUse.find((m:any) => m.sender === "user")?.text ||
       "Calculate total Lender Disbursed Amount by Agent from reference sheet.";
 
     const sanitizedRefDatasets = refDatasets.map(({ sheets, ...rest }) => rest);
-    const selectedScenariosList = scenarioRules.filter((s) => selectedScenarioIds.has(s.id));
+    const selectedScenariosList = scenarioRules.filter((s:any) => selectedScenarioIds.has(s.id));
 
     return buildUnifiedAiValidatorPayload({
       activeDatasetId: activeDataset.id,
@@ -896,9 +896,9 @@ export function AiValidatorView() {
         const refMeasureCol = src.measureColumn || "Lender Disbursed Amount";
         const sourceName = ds?.fileName || `Reference Sheet ${srcIdx + 1}`;
 
-        if (rows.length > 0 && rows.some((r) => r[refGroupCol] !== undefined || r[refMeasureCol] !== undefined)) {
+        if (rows.length > 0 && rows.some((r:any) => r[refGroupCol] !== undefined || r[refMeasureCol] !== undefined)) {
           hasActualMatchedRows = true;
-          rows.forEach((r) => {
+          rows.forEach((r:any) => {
             const key = String(r[refGroupCol] || "").trim();
             if (key) {
               const raw = r[refMeasureCol];
@@ -966,7 +966,7 @@ export function AiValidatorView() {
     const headers = ["Rank", "Agent Name", "Mapped Reference Role", "Ref Transactions", "Total Lender Disbursed Amount", "Status"];
     const csvRows = [headers.join(",")];
 
-    localExecutionResult.rows.forEach((r, idx) => {
+    localExecutionResult.rows.forEach((r:any, idx:any) => {
       csvRows.push([
         idx + 1,
         `"${r.agentName}"`,
@@ -1022,11 +1022,11 @@ export function AiValidatorView() {
 
   // Handle user answering a question chip or option
   const handleAnswerQuestion = (msgId: string, qId: string, option: string) => {
-    const updatedMessages = chatMessages.map((msg) => {
+    const updatedMessages = chatMessages.map((msg:any) => {
       if (msg.id !== msgId || !msg.questions) return msg;
       return {
         ...msg,
-        questions: msg.questions.map((q) =>
+        questions: msg.questions.map((q:any) =>
           q.id === qId ? { ...q, selectedOption: option } : q
         ),
       };
@@ -1064,7 +1064,7 @@ export function AiValidatorView() {
 
   // Toggle scenario selection
   const handleToggleScenario = (id: string) => {
-    setSelectedScenarioIds((prev) => {
+    setSelectedScenarioIds((prev:any) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -1074,7 +1074,7 @@ export function AiValidatorView() {
 
   // Filtered scenarios
   const filteredScenarios = useMemo(() => {
-    return scenarioRules.filter((sc) => {
+    return scenarioRules.filter((sc:any) => {
       if (scenarioCategoryFilter !== "all" && sc.category !== scenarioCategoryFilter) {
         return false;
       }
@@ -1083,7 +1083,7 @@ export function AiValidatorView() {
         return (
           sc.title.toLowerCase().includes(q) ||
           sc.businessQuestion.toLowerCase().includes(q) ||
-          sc.targetColumns.some((c) => c.toLowerCase().includes(q))
+          sc.targetColumns.some((c:any) => c.toLowerCase().includes(q))
         );
       }
       return true;
