@@ -724,7 +724,7 @@ export function AiValidatorView() {
     if (!doc) return;
 
     setSummarizingDocId(docId);
-    toast.loading(`Synthesizing "${doc.fileName}" with AI...`, { id: `doc-sum-${docId}` });
+    // toast.loading(`Synthesizing "${doc.fileName}" with AI...`, { id: `doc-sum-${docId}` });
     setTimeout(() => {
       const summaryText = `AI Underwriting Extract: Document "${doc.fileName}" establishes ${doc.sectionCount} policy boundaries. Key criteria require loan caps under ₹2.5M, rate corridors between 12%-24%, and mandatory dual-review for high-exposure accounts.`;
       const generatedRules = [
