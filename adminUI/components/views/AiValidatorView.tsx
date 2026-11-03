@@ -755,7 +755,7 @@ export function AiValidatorView() {
       };
 
       setScenarioRules((prev:any) => [newScenario, ...prev]);
-      setSelectedScenarioIds((prev:any) => new Set([...prev, newScenario.id]));
+      setSelectedScenarioIds((prev:Set<string>) => new Set([...prev, newScenario.id]));
       setSummarizingDocId(null);
 
       toast.dismiss(`doc-sum-${docId}`);
@@ -1064,7 +1064,7 @@ export function AiValidatorView() {
 
   // Toggle scenario selection
   const handleToggleScenario = (id: string) => {
-    setSelectedScenarioIds((prev:any) => {
+    setSelectedScenarioIds((prev:Set<string>) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
