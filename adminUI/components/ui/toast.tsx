@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, CheckCircle, Info, XCircle, X } from "lucide-react";
 
-export type ToastType = "success" | "error" | "info" | "warning";
+export type ToastType = "success" | "error" | "info" | "warning" | "dismiss";
 
 interface ToastMessage {
   id: string;
@@ -24,6 +24,8 @@ export const toast = {
   error: (message: string, duration?: number) => toast.show(message, "error", duration),
   warning: (message: string, duration?: number) => toast.show(message, "warning", duration),
   info: (message: string, duration?: number) => toast.show(message, "info", duration),
+  dismiss: (message: string, duration?: number) => toast.show(message, "dismiss", duration),
+
 };
 
 export function ToastContainer() {
