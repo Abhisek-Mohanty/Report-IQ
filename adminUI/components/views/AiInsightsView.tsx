@@ -264,7 +264,7 @@ export function AiInsightsView() {
   // Toggle scenario selection
   const handleToggleScenarioSelect = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setSelectedScenarioIds((prev) => {
+    setSelectedScenarioIds((prev:Set<string>) => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
@@ -405,7 +405,7 @@ export function AiInsightsView() {
   // Add custom user-defined scenario
   const handleAddCustomScenario = (newScenario: AiScenario) => {
     setScenarios((prev) => [newScenario, ...prev]);
-    setSelectedScenarioIds((prev) => new Set([...prev, newScenario.id]));
+    setSelectedScenarioIds((prev:Set<string>) => new Set([...prev, newScenario.id]));
     setActiveTabMode("relationships");
   };
 
