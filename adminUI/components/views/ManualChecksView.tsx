@@ -45,7 +45,12 @@ import {
   Info,
   Calendar,
   Hash,
-  Type
+  Type,
+  FileText,
+  ChevronsLeft,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";

@@ -1996,28 +1996,28 @@ export async function generateExportPayload(
     case "xlsx": {
       const u8 = generateExcelWorkbook(sheet, "xlsx", options);
       return {
-        blob: new Blob([u8], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+        blob: new Blob([u8 as any], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
         binaryBuffer: u8,
       };
     }
     case "xls": {
       const u8 = generateExcelWorkbook(sheet, "biff8", options);
       return {
-        blob: new Blob([u8], { type: "application/vnd.ms-excel" }),
+        blob: new Blob([u8 as any], { type: "application/vnd.ms-excel" }),
         binaryBuffer: u8,
       };
     }
     case "xlsb": {
       const u8 = generateExcelWorkbook(sheet, "xlsb", options);
       return {
-        blob: new Blob([u8], { type: "application/vnd.ms-excel.sheet.binary.macroEnabled.12" }),
+        blob: new Blob([u8 as any], { type: "application/vnd.ms-excel.sheet.binary.macroEnabled.12" }),
         binaryBuffer: u8,
       };
     }
     case "ods": {
       const u8 = generateExcelWorkbook(sheet, "ods", options);
       return {
-        blob: new Blob([u8], { type: "application/vnd.oasis.opendocument.spreadsheet" }),
+        blob: new Blob([u8 as any], { type: "application/vnd.oasis.opendocument.spreadsheet" }),
         binaryBuffer: u8,
       };
     }
@@ -2117,7 +2117,7 @@ export async function generateExportPayload(
     case "sqlite": {
       const u8 = generateSqliteBinary(sheet, options);
       return {
-        blob: new Blob([u8], { type: "application/vnd.sqlite3" }),
+        blob: new Blob([u8 as any], { type: "application/vnd.sqlite3" }),
         binaryBuffer: u8,
       };
     }
@@ -2126,35 +2126,35 @@ export async function generateExportPayload(
     case "parquet": {
       const u8 = generateParquetBinary(sheet, options);
       return {
-        blob: new Blob([u8], { type: "application/vnd.apache.parquet" }),
+        blob: new Blob([u8 as any], { type: "application/vnd.apache.parquet" }),
         binaryBuffer: u8,
       };
     }
     case "arrow": {
       const u8 = generateArrowBinary(sheet, options, false);
       return {
-        blob: new Blob([u8], { type: "application/vnd.apache.arrow.file" }),
+        blob: new Blob([u8 as any], { type: "application/vnd.apache.arrow.file" }),
         binaryBuffer: u8,
       };
     }
     case "feather": {
       const u8 = generateArrowBinary(sheet, options, true);
       return {
-        blob: new Blob([u8], { type: "application/vnd.apache.arrow.file" }),
+        blob: new Blob([u8 as any], { type: "application/vnd.apache.arrow.file" }),
         binaryBuffer: u8,
       };
     }
     case "avro": {
       const u8 = generateAvroBinary(sheet, options);
       return {
-        blob: new Blob([u8], { type: "application/avro" }),
+        blob: new Blob([u8 as any], { type: "application/avro" }),
         binaryBuffer: u8,
       };
     }
     case "orc": {
       const u8 = generateOrcBinary(sheet, options);
       return {
-        blob: new Blob([u8], { type: "application/vnd.apache.orc" }),
+        blob: new Blob([u8 as any], { type: "application/vnd.apache.orc" }),
         binaryBuffer: u8,
       };
     }
