@@ -42,8 +42,8 @@ export function ExportView() {
   const datasets = useAnalyticsStore((state) => state.datasets);
   const selectedDatasetId = useAnalyticsStore((state) => state.selectedDatasetId);
   const selectedSheetName = useAnalyticsStore((state) => state.selectedSheetName);
-  const setSelectedSheetName = useAnalyticsStore((state) => state.setSelectedSheetName);
-  const setActiveTab = useAnalyticsStore((state) => state.setActiveTab);
+  const setSelectedSheetName = useAnalyticsStore((state) => state.selectedSheetName);
+  const setActiveTab = useAnalyticsStore((state) => state.activeTab);
 
   // Active dataset & sheet
   const activeDataset = useMemo(() => {
