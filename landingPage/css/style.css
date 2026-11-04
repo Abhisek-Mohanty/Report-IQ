@@ -795,3 +795,341 @@ h1, h2, h3, h4, h5, h6 {
   .ott-capsule-header { padding: 1.1rem 1.5rem; }
   .ott-capsule-title { font-size: 1.05rem; }
 }
+
+/* ==========================================================================
+   Hero Key Value Badges (4 Badges Grid)
+   ========================================================================== */
+.ott-hero-badges {
+  margin-top: 3.5rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  text-align: left;
+}
+
+.ott-hero-badge-card {
+  background: rgba(14, 34, 56, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 1.15rem;
+  padding: 1.1rem 1.25rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.25s ease;
+}
+
+.ott-hero-badge-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(45, 212, 191, 0.35);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35);
+}
+
+.ott-badge-icon {
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+  display: inline-block;
+}
+
+.ott-badge-title {
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.ott-badge-sub {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  margin: 0;
+}
+
+/* ==========================================================================
+   Core Feature Pillars (Bento Grid)
+   ========================================================================== */
+.ott-bento-section {
+  background-color: var(--ott-dark-bg);
+  padding: 6rem 0;
+  color: #ffffff;
+}
+
+.ott-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.75rem;
+  margin-top: 3rem;
+}
+
+.ott-bento-card {
+  background: var(--ott-dark-surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.65rem;
+  padding: 2.25rem;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.ott-bento-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, transparent);
+  transition: all 0.3s ease;
+}
+
+.ott-bento-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(45, 212, 191, 0.3);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+}
+
+.ott-bento-card:hover::before {
+  background: linear-gradient(90deg, var(--ott-teal), var(--ott-violet));
+}
+
+.ott-bento-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(45, 212, 191, 0.1);
+  border: 1px solid rgba(45, 212, 191, 0.25);
+  color: var(--ott-teal);
+  padding: 0.28rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+  width: fit-content;
+}
+
+.ott-bento-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.85rem;
+  line-height: 1.25;
+}
+
+.ott-bento-desc {
+  color: #94a3b8;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  flex-grow: 1;
+}
+
+.ott-bento-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 1.25rem;
+}
+
+.ott-bento-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #cbd5e1;
+  font-size: 0.86rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.45;
+}
+
+.ott-bento-list li:last-child {
+  margin-bottom: 0;
+}
+
+.ott-bento-list li i {
+  color: var(--ott-teal);
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   Interactive Comparison Table (Report-IQ vs Cloud BI vs Excel)
+   ========================================================================== */
+.ott-comparison-table-section {
+  background-color: #ffffff;
+  padding: 6rem 0;
+}
+
+.ott-comp-table-wrap {
+  border-radius: 1.75rem;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  overflow: hidden;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.04);
+}
+
+.ott-comp-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.ott-comp-table thead th {
+  padding: 1.5rem 1.75rem;
+  font-weight: 800;
+  font-size: 1.05rem;
+  background-color: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+  color: #0f172a;
+}
+
+.ott-comp-table thead th.col-reportiq {
+  background-color: var(--ott-dark-surface);
+  color: #ffffff;
+  position: relative;
+  border-bottom: 2px solid var(--ott-teal);
+}
+
+.ott-comp-table tbody td {
+  padding: 1.25rem 1.75rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #475569;
+  vertical-align: middle;
+}
+
+.ott-comp-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ott-comp-table tbody td.col-reportiq {
+  background-color: rgba(14, 34, 56, 0.03);
+  font-weight: 600;
+  color: #0f172a;
+  border-left: 1px solid rgba(45, 212, 191, 0.2);
+  border-right: 1px solid rgba(45, 212, 191, 0.2);
+}
+
+.badge-tag-winner {
+  background: rgba(45, 212, 191, 0.15);
+  color: #0d9488;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  display: inline-block;
+  margin-left: 6px;
+}
+
+/* ==========================================================================
+   27 Universal Formats Tabs / Filter
+   ========================================================================== */
+.ott-format-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 2.5rem;
+}
+
+.ott-format-filter-btn {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 0.45rem 1.25rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ott-format-filter-btn.active,
+.ott-format-filter-btn:hover {
+  background-color: var(--ott-dark-bg);
+  border-color: var(--ott-dark-bg);
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   FAQ Section (Ottimate Dark Accordions)
+   ========================================================================== */
+.ott-faq-section {
+  background-color: var(--ott-dark-bg);
+  padding: 6rem 0;
+  color: #ffffff;
+}
+
+.ott-faq-card {
+  background: var(--ott-dark-surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.25rem;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.ott-faq-card.active {
+  border-color: rgba(45, 212, 191, 0.35);
+}
+
+.ott-faq-header {
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ott-faq-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.ott-faq-chevron {
+  font-size: 1.1rem;
+  color: var(--ott-teal);
+  transition: transform 0.3s ease;
+}
+
+.ott-faq-card.active .ott-faq-chevron {
+  transform: rotate(180deg);
+}
+
+.ott-faq-body {
+  padding: 0 2rem 1.5rem 2rem;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  line-height: 1.65;
+  display: none;
+}
+
+.ott-faq-card.active .ott-faq-body {
+  display: block;
+}
+
+/* Responsive updates */
+@media (max-width: 991.98px) {
+  .ott-hero-badges {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .ott-bento-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .ott-hero-badges {
+    grid-template-columns: 1fr;
+  }
+  .ott-comp-table thead th,
+  .ott-comp-table tbody td {
+    padding: 0.85rem 0.75rem;
+    font-size: 0.82rem;
+  }
+}

@@ -26,23 +26,45 @@ document.addEventListener("DOMContentLoaded", () => {
   const capsuleItems = document.querySelectorAll(".ott-capsule-item");
   capsuleItems.forEach((item) => {
     const header = item.querySelector(".ott-capsule-header");
-    header.addEventListener("click", () => {
-      const isActive = item.classList.contains("active");
+    if (header) {
+      header.addEventListener("click", () => {
+        const isActive = item.classList.contains("active");
 
-      // Optional: close other open items
-      capsuleItems.forEach((other) => {
-        if (other !== item) other.classList.remove("active");
+        capsuleItems.forEach((other) => {
+          if (other !== item) other.classList.remove("active");
+        });
+
+        if (isActive) {
+          item.classList.remove("active");
+        } else {
+          item.classList.add("active");
+        }
       });
-
-      if (isActive) {
-        item.classList.remove("active");
-      } else {
-        item.classList.add("active");
-      }
-    });
+    }
   });
 
-  // 4. Interactive Live Simulator Dataset Switcher
+  // 4. FAQ Accordion Toggle
+  const faqCards = document.querySelectorAll(".ott-faq-card");
+  faqCards.forEach((card) => {
+    const header = card.querySelector(".ott-faq-header");
+    if (header) {
+      header.addEventListener("click", () => {
+        const isActive = card.classList.contains("active");
+
+        faqCards.forEach((other) => {
+          if (other !== card) other.classList.remove("active");
+        });
+
+        if (isActive) {
+          card.classList.remove("active");
+        } else {
+          card.classList.add("active");
+        }
+      });
+    }
+  });
+
+  // 5. Interactive Live Simulator Dataset Switcher
   const sampleDatasets = {
     loans: {
       name: "Commercial_Loan_Portfolio_Q3.xlsx",
@@ -154,7 +176,27 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initial Simulator render
   renderSimDataset("loans");
 
-  // 5. Smooth Anchor Scrolling
+  // 6. 27-Format Category Filter Bar
+  const formatFilterBtns = document.querySelectorAll(".ott-format-filter-btn");
+  const formatCards = document.querySelectorAll(".ott-format-col-item");
+
+  formatFilterBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      formatFilterBtns.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      const category = btn.getAttribute("data-filter");
+      formatCards.forEach((card) => {
+        if (category === "all" || card.getAttribute("data-category") === category) {
+          card.style.display = "block";
+        } else {
+          card.style.display = "none";
+        }
+      });
+    });
+  });
+
+  // 7. Smooth Anchor Scrolling
   document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
     anchor.addEventListener("click", function (e) {
       const targetId = this.getAttribute("href");
