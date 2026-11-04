@@ -1,45 +1,20 @@
 {
   "pages": {
-    "/_not-found/page": [
-      "static/chunks/webpack-453185fde3549e87.js",
-      "static/chunks/4bd1b696-409494caf8c83275.js",
-      "static/chunks/255-41622e0825f37f6a.js",
-      "static/chunks/main-app-ad32ee78d88227d3.js",
-      "static/chunks/app/_not-found/page-93c4f9d039952d8e.js"
-    ],
     "/layout": [
-      "static/chunks/webpack-453185fde3549e87.js",
-      "static/chunks/4bd1b696-409494caf8c83275.js",
-      "static/chunks/255-41622e0825f37f6a.js",
-      "static/chunks/main-app-ad32ee78d88227d3.js",
-      "static/css/f0081460677eb7e3.css",
-      "static/chunks/353-a16752b0bb2b9107.js",
-      "static/chunks/app/layout-e8cbbb41ff538367.js"
-    ],
-    "/api/auth/[...nextauth]/route": [
-      "static/chunks/webpack-453185fde3549e87.js",
-      "static/chunks/4bd1b696-409494caf8c83275.js",
-      "static/chunks/255-41622e0825f37f6a.js",
-      "static/chunks/main-app-ad32ee78d88227d3.js",
-      "static/chunks/app/api/auth/[...nextauth]/route-388461e801f19c4e.js"
-    ],
-    "/auth/callback/page": [
-      "static/chunks/webpack-453185fde3549e87.js",
-      "static/chunks/4bd1b696-409494caf8c83275.js",
-      "static/chunks/255-41622e0825f37f6a.js",
-      "static/chunks/main-app-ad32ee78d88227d3.js",
-      "static/chunks/app/auth/callback/page-1fb821ffa1a9ca2f.js"
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/layout.css",
+      "static/chunks/app/layout.js"
     ],
     "/page": [
-      "static/chunks/webpack-453185fde3549e87.js",
-      "static/chunks/4bd1b696-409494caf8c83275.js",
-      "static/chunks/255-41622e0825f37f6a.js",
-      "static/chunks/main-app-ad32ee78d88227d3.js",
-      "static/chunks/2170a4aa-39d6a98f25f9c032.js",
-      "static/chunks/164f4fb6-5d07cc7856669d81.js",
-      "static/chunks/353-a16752b0bb2b9107.js",
-      "static/chunks/334-ffaf90c92aab47aa.js",
-      "static/chunks/app/page-672713483b3021b0.js"
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/page.js"
+    ],
+    "/auth/callback/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/auth/callback/page.js"
     ]
   }
 }

@@ -30,7 +30,7 @@ interface SidebarItem {
   id: string;
   name: string;
   icon: React.ComponentType<any>;
-  category: "core" | "prep" | "ai";
+  category: "core" | "prep" | "ai" | "convert";
   requiresAuth?: boolean;
   desktopOnly?: boolean;
 }
@@ -48,7 +48,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: "manual-checks", name: "Data Validator", icon: CheckSquare, category: "prep", requiresAuth: false },
   { id: "query", name: "Query Builder", icon: Filter, category: "prep", requiresAuth: false },
   { id: "visualizations", name: "Visualizations", icon: BarChart3, category: "prep", requiresAuth: false },
-  { id: "export", name: "Converter", icon: Download, category: "prep", requiresAuth: false },
+  { id: "export", name: "From Excel", icon: Download, category: "convert", requiresAuth: false },
   
   // AI Insights placeholders (Desktop Only)
   { id: "ai-insights", name: "AI Insights", icon: BrainCog, category: "ai", requiresAuth: true, desktopOnly: true },
@@ -66,7 +66,7 @@ export function Sidebar() {
   const isMobileSidebarOpen = useAnalyticsStore((state) => state.isMobileSidebarOpen);
   const setMobileSidebarOpen = useAnalyticsStore((state) => state.setMobileSidebarOpen);
 
-  const renderNavGroup = (category: "core" | "prep" | "ai", title: string, isMobileDrawer = false) => {
+  const renderNavGroup = (category: "core" | "prep" | "ai" | "convert", title: string, isMobileDrawer = false) => {
     const items = SIDEBAR_ITEMS.filter((item) => item.category === category);
     
     return (
@@ -163,6 +163,7 @@ export function Sidebar() {
         <nav className="flex-1 overflow-y-auto pt-6">
           {renderNavGroup("core", "Workspace Core")}
           {renderNavGroup("prep", "Data Prep & Visuals")}
+          {renderNavGroup("convert", "Data Converter")}
           {renderNavGroup("ai", "AI Copilots")}
         </nav>
 

@@ -1,0 +1,797 @@
+/* ==========================================================================
+   Report-IQ — Exact Ottimate.com Design Language & UI/UX Clone
+   Colors: Deep Navy (#081627), Mint/Teal (#2dd4bf, #34d399), Periwinkle (#5c67f5)
+   ========================================================================== */
+
+:root {
+  /* Ottimate Brand Palette */
+  --ott-dark-bg: #081627;
+  --ott-dark-surface: #0e2238;
+  --ott-dark-card: #0f2438;
+  --ott-navy-text: #0d1b2a;
+  
+  --ott-teal: #2dd4bf;
+  --ott-teal-light: #5eead4;
+  --ott-mint: #34d399;
+  --ott-mint-bar: #5fe3b3;
+
+  --ott-violet: #5c67f5;
+  --ott-violet-hover: #4b55e6;
+  --ott-purple: #7000ff;
+
+  --ott-light-bg: #f8fafc;
+  --ott-light-subtle: #f1f5f9;
+  --ott-card-border: rgba(226, 232, 240, 0.9);
+  
+  --text-muted-dark: #94a3b8;
+  --text-muted-light: #64748b;
+  
+  /* Transition */
+  --ease-smooth: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Global */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
+  color: var(--ott-navy-text);
+  background-color: var(--ott-dark-bg);
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+/* Top Announcement Banner (Screenshot 1) */
+.ott-announcement-bar {
+  background-color: var(--ott-mint-bar);
+  color: #0b1a2d;
+  padding: 0.65rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  position: relative;
+  z-index: 1050;
+}
+
+.ott-announcement-btn {
+  display: inline-block;
+  border: 1.5px solid #0b1a2d;
+  border-radius: 9999px;
+  padding: 0.2rem 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #0b1a2d;
+  text-decoration: none;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
+  margin-left: 0.75rem;
+}
+
+.ott-announcement-btn:hover {
+  background-color: #0b1a2d;
+  color: var(--ott-mint-bar);
+}
+
+.ott-announcement-close {
+  position: absolute;
+  right: 1.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #0b1a2d;
+  font-size: 1.1rem;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.ott-announcement-close:hover {
+  opacity: 1;
+}
+
+/* Sticky Navbar (Screenshot 1) */
+.navbar-ottimate {
+  background-color: var(--ott-dark-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 1.1rem 0;
+  transition: all var(--ease-smooth);
+  z-index: 1040;
+}
+
+.navbar-ottimate.scrolled {
+  background-color: rgba(8, 22, 39, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.ott-brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+}
+
+.ott-brand-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--ott-teal);
+  font-size: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ott-brand-text {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.04em;
+}
+
+.ott-brand-text span {
+  color: var(--ott-teal);
+}
+
+.ott-nav-link {
+  color: #e2e8f0 !important;
+  font-size: 0.92rem;
+  font-weight: 500;
+  padding: 0.5rem 0.9rem !important;
+  transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ott-nav-link i.chevron {
+  font-size: 0.7rem;
+  transition: transform 0.2s ease;
+  opacity: 0.8;
+}
+
+.ott-nav-link:hover {
+  color: var(--ott-teal) !important;
+}
+
+.dropdown:hover .ott-nav-link i.chevron {
+  transform: rotate(180deg);
+}
+
+/* Mega Menu Dropdowns */
+.ott-dropdown-menu {
+  background-color: #0b1a2d;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  min-width: 340px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  animation: fadeInDown 0.2s ease forwards;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ott-dropdown-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.ott-dropdown-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.ott-dropdown-item-title {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.92rem;
+  margin-bottom: 2px;
+}
+
+.ott-dropdown-item-desc {
+  color: var(--text-muted-dark);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  margin: 0;
+}
+
+/* Buttons */
+.btn-ott-pill {
+  border-radius: 9999px;
+  padding: 0.58rem 1.45rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: all 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.btn-ott-violet {
+  background-color: var(--ott-violet);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(92, 103, 245, 0.4);
+}
+
+.btn-ott-violet:hover {
+  background-color: var(--ott-violet-hover);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(92, 103, 245, 0.6);
+}
+
+.btn-ott-teal-gradient {
+  background: linear-gradient(135deg, var(--ott-teal) 0%, var(--ott-mint) 100%);
+  color: #081627;
+  font-weight: 700;
+  border: none;
+  box-shadow: 0 4px 16px rgba(45, 212, 191, 0.35);
+}
+
+.btn-ott-teal-gradient:hover {
+  color: #081627;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(45, 212, 191, 0.55);
+}
+
+.ott-login-link {
+  color: #cbd5e1;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.92rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s ease;
+}
+
+.ott-login-link:hover {
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Hero Section (Screenshot 1)
+   ========================================================================== */
+.ott-hero-section {
+  position: relative;
+  background-color: var(--ott-dark-bg);
+  padding: 5.5rem 0 7rem 0;
+  overflow: hidden;
+  text-align: center;
+}
+
+/* Abstract Flowing Ribbon/Wave Background */
+.hero-abstract-wave {
+  position: absolute;
+  top: 10%;
+  right: -5%;
+  width: 900px;
+  height: 480px;
+  pointer-events: none;
+  opacity: 0.85;
+  z-index: 1;
+}
+
+.hero-content-wrap {
+  position: relative;
+  z-index: 2;
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.ott-hero-title {
+  font-size: 3.4rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #ffffff;
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.035em;
+}
+
+.ott-hero-title .teal-line {
+  color: var(--ott-teal);
+  display: block;
+}
+
+.ott-hero-sub {
+  font-size: 1.18rem;
+  color: #cbd5e1;
+  line-height: 1.6;
+  max-width: 680px;
+  margin: 0 auto 2.5rem auto;
+  font-weight: 400;
+}
+
+/* Concave / Convex SVG Wave Separators */
+.wave-divider {
+  width: 100%;
+  line-height: 0;
+  overflow: hidden;
+}
+
+.wave-divider svg {
+  display: block;
+  width: 100%;
+  height: 65px;
+}
+
+/* ==========================================================================
+   Comparison Cards Section (Screenshot 2: Why Finance Teams Choose)
+   ========================================================================== */
+.ott-comparison-section {
+  background-color: #ffffff;
+  padding: 4.5rem 0 6rem 0;
+}
+
+.ott-section-heading {
+  font-size: 2.35rem;
+  font-weight: 800;
+  color: var(--ott-navy-text);
+  text-align: center;
+  margin-bottom: 3.5rem;
+  letter-spacing: -0.03em;
+}
+
+.ott-dual-cards-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+/* Left Card: Generic */
+.ott-card-generic {
+  background-color: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 1.75rem;
+  padding: 3rem 4rem 3rem 3rem;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
+  width: 58%;
+  z-index: 1;
+}
+
+.ott-card-generic-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 1.75rem;
+}
+
+.ott-cross-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ott-cross-list li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.95rem;
+  color: #475569;
+  margin-bottom: 1.15rem;
+}
+
+.ott-cross-icon {
+  font-size: 1.1rem;
+  color: #94a3b8;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Right Card: Report-IQ (Overlapping Dark Navy) */
+.ott-card-highlight {
+  background-color: var(--ott-dark-surface);
+  border-radius: 1.75rem;
+  padding: 3rem 2.75rem;
+  box-shadow: 0 25px 60px -10px rgba(8, 22, 39, 0.45);
+  width: 52%;
+  margin-left: -10%;
+  z-index: 2;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ott-card-highlight-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1.75rem;
+}
+
+.ott-card-highlight-header .brand-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+}
+
+.ott-card-highlight-header .brand-title span {
+  color: var(--ott-teal);
+}
+
+.ott-check-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ott-check-list li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.96rem;
+  color: #f1f5f9;
+  margin-bottom: 1.15rem;
+}
+
+.ott-check-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: rgba(45, 212, 191, 0.2);
+  color: var(--ott-teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Trusted By The Best In (Screenshot 3: 3 Columns with Vertical Dividers)
+   ========================================================================== */
+.ott-trusted-section {
+  background: radial-gradient(circle at 50% 0%, #ffffff 0%, #f1f5f9 100%);
+  padding: 4.5rem 0 6rem 0;
+}
+
+.ott-trusted-heading {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--ott-navy-text);
+  text-align: center;
+  margin-bottom: 3.5rem;
+}
+
+.ott-industry-columns-wrap {
+  max-width: 950px;
+  margin: 0 auto;
+}
+
+.ott-industry-col {
+  text-align: center;
+  padding: 0 1.5rem;
+}
+
+.ott-industry-col-header {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e3a5f;
+  margin-bottom: 2rem;
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 1.5px;
+}
+
+.ott-industry-logos {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.ott-industry-logo-item {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.85;
+}
+
+.col-divider {
+  border-right: 1px solid #cbd5e1;
+}
+
+/* ==========================================================================
+   Feature Section (Screenshot 4: Capture & Code / Pattern Engine)
+   ========================================================================== */
+.ott-feature-dark-section {
+  background-color: var(--ott-dark-bg);
+  padding: 6rem 0;
+  color: #ffffff;
+  position: relative;
+}
+
+.ott-feature-title {
+  font-size: 2.6rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+  margin-bottom: 1.25rem;
+}
+
+.ott-feature-desc {
+  font-size: 1.12rem;
+  color: #cbd5e1;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  max-width: 500px;
+}
+
+/* Floating AI Chat / Notification Bubble (Screenshot 4) */
+.ott-wireframe-card-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ott-wireframe-svg-box {
+  width: 100%;
+  max-width: 480px;
+  height: 320px;
+  background: rgba(14, 34, 56, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.ott-floating-ai-bubble {
+  position: absolute;
+  top: 40%;
+  left: 5%;
+  right: 5%;
+  background: rgba(15, 36, 56, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(45, 212, 191, 0.35);
+  border-radius: 9999px;
+  padding: 0.75rem 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.45), 0 0 25px rgba(45, 212, 191, 0.15);
+  z-index: 5;
+}
+
+.ott-ai-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(45, 212, 191, 0.15);
+  border: 1.5px solid var(--ott-teal);
+  color: var(--ott-teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.ott-ai-text {
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  line-height: 1.35;
+  margin: 0;
+}
+
+/* ==========================================================================
+   Industry Accordion Capsule Pills (Screenshot 5)
+   ========================================================================== */
+.ott-accordion-section {
+  background-color: var(--ott-dark-bg);
+  padding: 3rem 0 6rem 0;
+}
+
+.ott-capsule-item {
+  background-color: #ffffff;
+  border-radius: 9999px;
+  margin-bottom: 1.2rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.ott-capsule-item.active {
+  border-radius: 1.5rem;
+}
+
+.ott-capsule-header {
+  padding: 1.25rem 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ott-capsule-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ott-navy-text);
+  margin: 0;
+}
+
+.ott-capsule-chevron {
+  font-size: 1.1rem;
+  color: var(--ott-navy-text);
+  transition: transform 0.3s ease;
+}
+
+.ott-capsule-item.active .ott-capsule-chevron {
+  transform: rotate(180deg);
+}
+
+.ott-capsule-body {
+  padding: 0 2.25rem 1.75rem 2.25rem;
+  display: none;
+  color: #475569;
+  font-size: 0.98rem;
+  line-height: 1.6;
+}
+
+.ott-capsule-item.active .ott-capsule-body {
+  display: block;
+}
+
+/* ==========================================================================
+   Live Simulator & 27 Formats Section
+   ========================================================================== */
+.ott-simulator-shell {
+  background: var(--ott-dark-surface);
+  border-radius: 1.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+  color: #ffffff;
+  overflow: hidden;
+}
+
+.ott-sim-topbar {
+  background: #091728;
+  padding: 1rem 1.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ott-sim-pill-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #cbd5e1;
+  padding: 0.38rem 1.1rem;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ott-sim-pill-btn.active,
+.ott-sim-pill-btn:hover {
+  background: var(--ott-violet);
+  border-color: var(--ott-violet);
+  color: #ffffff;
+}
+
+.ott-table-preview {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.ott-table-preview th {
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+  font-weight: 600;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+
+.ott-table-preview td {
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #e2e8f0;
+}
+
+/* Footer (Matching Ottimate Dark Footer) */
+.ott-footer {
+  background-color: #050f1b;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 5rem 0 2rem 0;
+  color: #94a3b8;
+}
+
+.ott-footer-heading {
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin-bottom: 1.25rem;
+  letter-spacing: 0.06em;
+}
+
+.ott-footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ott-footer-links li {
+  margin-bottom: 0.75rem;
+}
+
+.ott-footer-links a {
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 0.92rem;
+  transition: color 0.2s ease;
+}
+
+.ott-footer-links a:hover {
+  color: var(--ott-teal);
+}
+
+.ott-footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 4rem;
+  padding-top: 2rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
+  .ott-hero-title { font-size: 2.6rem; }
+  .ott-dual-cards-container {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .ott-card-generic, .ott-card-highlight {
+    width: 100%;
+    margin-left: 0;
+    padding: 2.5rem 2rem;
+  }
+  .col-divider { border-right: none; border-bottom: 1px solid #cbd5e1; padding-bottom: 2rem; margin-bottom: 2rem; }
+}
+
+@media (max-width: 575.98px) {
+  .ott-hero-title { font-size: 2.1rem; }
+  .ott-capsule-header { padding: 1.1rem 1.5rem; }
+  .ott-capsule-title { font-size: 1.05rem; }
+}
