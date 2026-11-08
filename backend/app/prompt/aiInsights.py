@@ -432,7 +432,7 @@ Use exactly this structure:
       "columns": ["colA", "colB"],
       "analysisType": "correlation | group_comparison | distribution | time_series | outlier_detection | duplicate_check | missing_data",
       "method": "pearson | spearman | groupby-aggregate | IQR | z-score | chi-square | time-aggregation | duplicate-check | missingness-analysis",
-      "suggestedChart": "scatter | bar | line | histogram | box | pie | heatmap",
+      "suggestedChart": "scatter | bar | line | histogram | pie | heatmap",
       "businessQuestion": "the question this analysis answers",
       "whyItMatters": "one sentence",
       "confidence": "high | medium | low",
@@ -2031,7 +2031,6 @@ CHARTS
 - Pareto requires supplied cumulative shares.
 - Scatter uses dimension as numeric x and measure as numeric y.
   For grouped count-versus-average points, label the group-level scope clearly.
-- Box requires supplied quartiles, whiskers, and a compatible renderer.
 - Complex charts require an established source shape and supported adapter.
 - If a required chart contract is unavailable, omit the chart and warn.
 - sort and limit are display settings, not new analytical statistics.
