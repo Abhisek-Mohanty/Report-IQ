@@ -424,6 +424,8 @@ export function AiValidatorView() {
   const selectDataset = useAnalyticsStore((state) => state.selectDataset);
   const selectSheet = useAnalyticsStore((state) => state.selectSheet);
   const setActiveTab = useAnalyticsStore((state) => state.setActiveTab);
+  const theme = useAnalyticsStore((state) => state.theme);
+  const isDark = theme === "dark";
 
   // Active dataset and sheet resolution
   const activeDataset: Dataset | null = useMemo(() => {
@@ -607,13 +609,14 @@ export function AiValidatorView() {
 
   // Add workspace dataset as a reference Excel
   const handleAddWorkspaceDataset = (ds: Dataset) => {
-    if (!ds || ds.sheets.length === 0) return;
+    if (!ds || !ds.sheets || ds.sheets.length === 0) return;
     const targetSheet = ds.sheets[0];
+    if (!targetSheet) return;
     const entryId = `ref-ds-ws-${Date.now()}`;
     // Profile ALL columns from workspace dataset sheet so all columns are available
-    const allProfiles = targetSheet.headers.map((c) => buildColumnProfile(targetSheet, c));
-    const defaultSelected = targetSheet.headers.slice(0, Math.min(8, targetSheet.headers.length));
-    const examples = extractRepresentativeRows(targetSheet.rows);
+    const allProfiles = (targetSheet.headers || []).map((c) => buildColumnProfile(targetSheet, c));
+    const defaultSelected = (targetSheet.headers || []).slice(0, Math.min(8, (targetSheet.headers || []).length));
+    const examples = extractRepresentativeRows(targetSheet.rows || []);
 
     const newRef: ReferenceDatasetEntry = {
       id: entryId,
@@ -621,10 +624,10 @@ export function AiValidatorView() {
       fileName: `${ds.name} (Workspace Dataset)`,
       fileSizeBytes: ds.size || 1024,
       sheetName: targetSheet.name,
-      availableSheets: ds.sheets.map((s) => s.name),
+      availableSheets: (ds.sheets || []).map((s) => s.name),
       sheets: ds.sheets,
-      sourceRowCount: targetSheet.rowCount,
-      sourceColumnCount: targetSheet.headers.length,
+      sourceRowCount: targetSheet.rowCount ?? targetSheet.rows?.length ?? 0,
+      sourceColumnCount: (targetSheet.headers || []).length,
       selectedColumns: defaultSelected,
       rowScope: { mode: "all" },
       selectedRowCount: targetSheet.rowCount,
@@ -869,7 +872,7 @@ export function AiValidatorView() {
       style: "currency",
       currency: "INR",
       maximumFractionDigits: 0,
-    }).format(val);
+    }).format(Number(val) || 0);
   };
 
   // Run client-side local rule execution to calculate group totals and generate table
@@ -1144,13 +1147,13 @@ export function AiValidatorView() {
           <MonitorCheck className="w-10 h-10" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-extrabold text-white tracking-tight">AI Report Validator</h2>
-          <p className="text-sm text-slate-400 leading-relaxed max-w-md mx-auto">
+          <h2 className="text-2xl font-extrabold text-foreground tracking-tight">AI Report Validator</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-md mx-auto">
             Validate loan portfolios and financial records using counterparty Excel comparison and underwriting policy documents.
           </p>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full text-left space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+        <div className="bg-card border border-border rounded-2xl p-6 w-full text-left space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <Database className="w-4 h-4 text-indigo-400" />
             Select or Upload a Dataset
           </h3>
@@ -1160,17 +1163,17 @@ export function AiValidatorView() {
                 <button
                   key={d.id}
                   onClick={() => selectDataset(d.id)}
-                  className="p-3 rounded-xl border border-slate-800 bg-slate-800/50 hover:bg-slate-800 hover:border-indigo-500/50 text-left transition-all"
+                  className="p-3 rounded-xl border border-border bg-accent/50 hover:bg-accent hover:border-indigo-500/50 text-left transition-all"
                 >
-                  <div className="text-xs font-bold text-white truncate">{d.name}</div>
-                  <div className="text-[11px] text-slate-400 mt-1">
-                    {d.sheets.length} Sheet(s) &bull; {d.sheets[0]?.rowCount.toLocaleString()} rows
+                  <div className="text-xs font-bold text-foreground truncate">{d.name}</div>
+                  <div className="text-[11px] text-muted-foreground mt-1">
+                    {d.sheets?.length || 0} Sheet(s) &bull; {(d.sheets?.[0]?.rowCount ?? d.sheets?.[0]?.rows?.length ?? 0).toLocaleString()} rows
                   </div>
                 </button>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-400">No datasets loaded yet. Upload your dataset to begin.</p>
+            <p className="text-xs text-muted-foreground">No datasets loaded yet. Upload your dataset to begin.</p>
           )}
           <div className="pt-2 flex justify-end">
             <Button className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs gap-2" onClick={() => setActiveTab("upload")}>
@@ -1259,7 +1262,7 @@ export function AiValidatorView() {
       {/* =========================================================================
           TOP BANNER & SCOPE CONTROLS
          ========================================================================= */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+      <div className="bg-card/90 border border-border rounded-2xl p-6 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-48 bg-gradient-to-bl from-indigo-500/10 via-purple-500/5 to-transparent pointer-events-none" />
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -1271,43 +1274,43 @@ export function AiValidatorView() {
               </span>
 
               {/* Dataset & Sheet Switcher */}
-              <div className="flex items-center gap-1.5 bg-slate-800/90 px-3 py-1 rounded-lg border border-slate-700 text-xs text-slate-300">
-                <Database className="w-3.5 h-3.5 text-slate-400" />
+              <div className="flex items-center gap-1.5 bg-accent px-3 py-1 rounded-lg border border-border text-xs text-foreground">
+                <Database className="w-3.5 h-3.5 text-muted-foreground" />
                 <span>Active Dataset:</span>
                 <select
                   value={activeDataset.id}
                   onChange={(e) => selectDataset(e.target.value)}
-                  className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer"
+                  className="bg-transparent text-foreground font-semibold focus:outline-none cursor-pointer"
                 >
                   {datasets.map((d) => (
-                    <option key={d.id} value={d.id} className="bg-slate-900 text-white">
+                    <option key={d.id} value={d.id} className="bg-card text-foreground">
                       {d.name}
                     </option>
                   ))}
                 </select>
-                <span className="text-slate-600">&bull;</span>
+                <span className="text-border">&bull;</span>
                 <span>Sheet:</span>
                 <select
                   value={activeSheet.name}
                   onChange={(e) => selectSheet(e.target.value)}
-                  className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer"
+                  className="bg-transparent text-foreground font-semibold focus:outline-none cursor-pointer"
                 >
                   {activeDataset.sheets.map((s) => (
-                    <option key={s.name} value={s.name} className="bg-slate-900 text-white">
-                      {s.name} ({s.rowCount.toLocaleString()} rows)
+                    <option key={s.name} value={s.name} className="bg-card text-foreground">
+                      {s.name} ({(s.rowCount ?? s.rows?.length ?? 0).toLocaleString()} rows)
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-3">
               <span>AI Report Validator</span>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono font-normal">
                 Unified Multi-Source Suite
               </span>
             </h1>
-            <p className="text-sm text-slate-400 max-w-3xl">
+            <p className="text-sm text-muted-foreground max-w-3xl">
               Reconcile counterparty spreadsheets, verify compliance against underwriting policy rulebooks, and collaborate with interactive AI chat clarifications.
             </p>
           </div>
@@ -1317,7 +1320,7 @@ export function AiValidatorView() {
               variant="outline"
               size="sm"
               onClick={() => setShowUserGuide((prev) => !prev)}
-              className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs gap-1.5"
+              className="border-border text-foreground hover:bg-accent text-xs gap-1.5"
             >
               <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
               {showUserGuide ? "Hide User Guide" : "User Guide & Steps"}
@@ -1338,62 +1341,62 @@ export function AiValidatorView() {
             USER GUIDE & STEPS TO PERFORM (COLLAPSIBLE)
            ========================================================================= */}
         {showUserGuide && (
-          <div className="mt-6 pt-5 border-t border-slate-800/80 space-y-4 animate-in fade-in duration-200">
+          <div className="mt-6 pt-5 border-t border-border space-y-4 animate-in fade-in duration-200">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-indigo-400" />
                 How to Use AI Validator: 5-Step Workflow
               </span>
-              <span className="text-[11px] text-slate-400">Client-Side Privacy: Spreadsheets never leave your device</span>
+              <span className="text-[11px] text-muted-foreground">Client-Side Privacy: Spreadsheets never leave your device</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-              <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-1.5">
+              <div className="p-3.5 rounded-xl bg-accent/40 border border-border space-y-1.5">
                 <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
                   1
                 </div>
-                <div className="text-xs font-bold text-white">Active Target Columns</div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <div className="text-xs font-bold text-foreground">Active Target Columns</div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
                   Select key columns from your active portfolio (e.g. Loan ID, Sanction Amount, IRR).
                 </p>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-1.5">
+              <div className="p-3.5 rounded-xl bg-accent/40 border border-border space-y-1.5">
                 <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
                   2
                 </div>
-                <div className="text-xs font-bold text-white">Unified Reference Hub</div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <div className="text-xs font-bold text-foreground">Unified Reference Hub</div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
                   Drop multiple Excels, CSVs, and policy PDFs, or pick sheets from workspace datasets.
                 </p>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-1.5">
+              <div className="p-3.5 rounded-xl bg-accent/40 border border-border space-y-1.5">
                 <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
                   3
                 </div>
-                <div className="text-xs font-bold text-white">AI Document Summary</div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <div className="text-xs font-bold text-foreground">AI Document Summary</div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
                   Request AI document summaries to automatically synthesize policy rules and underwriting limits.
                 </p>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-1.5">
+              <div className="p-3.5 rounded-xl bg-accent/40 border border-border space-y-1.5">
                 <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
                   4
                 </div>
-                <div className="text-xs font-bold text-white">Scenario IDs &amp; Rules</div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <div className="text-xs font-bold text-foreground">Scenario IDs &amp; Rules</div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
                   Review &amp; select validation scenario IDs (s1, s2, r1...) generated directly inside the AI summary response.
                 </p>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-1.5">
+              <div className="p-3.5 rounded-xl bg-accent/40 border border-border space-y-1.5">
                 <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
                   5
                 </div>
-                <div className="text-xs font-bold text-white">Interactive Chat & Run</div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <div className="text-xs font-bold text-foreground">Interactive Chat & Run</div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
                   Clarify keys and tolerances in the chat feed, then generate the RFC 6901 validation suite.
                 </p>
               </div>
@@ -1405,37 +1408,37 @@ export function AiValidatorView() {
       {/* =========================================================================
           SECTION 1: ACTIVE PORTFOLIO COLUMN SELECTION (RESERVED DESIGN)
          ========================================================================= */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="space-y-1">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
+            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
               <Database className="w-5 h-5 text-indigo-400" />
               <span>Target Portfolio Columns &bull; {activeSheet.name}</span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300 border border-slate-700">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-accent text-foreground/90 border border-border">
                 {activeSelectedCols.length} of {activeSheet.headers.length} selected
               </span>
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               Select which attributes from the active portfolio to profile and validate against reference sources.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search columns..."
                 value={activeColSearch}
                 onChange={(e) => setActiveColSearch(e.target.value)}
-                className="bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-44"
+                className="bg-card border border-border rounded-lg pl-8 pr-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-44"
               />
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setActiveSelectedCols(activeSheet.headers)}
-              className="border-slate-700 text-xs text-slate-300 hover:bg-slate-800"
+              className="border-border text-xs text-foreground hover:bg-accent"
             >
               Select All
             </Button>
@@ -1447,7 +1450,7 @@ export function AiValidatorView() {
                   activeSheet.headers.filter((h) => activeSheet.columnTypes[h] === "number")
                 )
               }
-              className="border-slate-700 text-xs text-slate-300 hover:bg-slate-800"
+              className="border-border text-xs text-foreground hover:bg-accent"
             >
               Numeric
             </Button>
@@ -1459,7 +1462,7 @@ export function AiValidatorView() {
                   activeSheet.headers.filter((h) => activeSheet.columnTypes[h] !== "number")
                 )
               }
-              className="border-slate-700 text-xs text-slate-300 hover:bg-slate-800"
+              className="border-border text-xs text-foreground hover:bg-accent"
             >
               Text
             </Button>
@@ -1467,7 +1470,7 @@ export function AiValidatorView() {
               variant="outline"
               size="sm"
               onClick={() => setActiveSelectedCols([])}
-              className="border-slate-700 text-xs text-slate-300 hover:bg-slate-800"
+              className="border-border text-xs text-foreground hover:bg-accent"
             >
               Clear
             </Button>
@@ -1475,7 +1478,7 @@ export function AiValidatorView() {
         </div>
 
         {/* Reserved Monospace Column Pills */}
-        <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+        <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto p-3 rounded-xl bg-accent/30 border border-border">
           {activeSheet.headers
             .filter((h) => !activeColSearch || h.toLowerCase().includes(activeColSearch.toLowerCase()))
             .map((h) => {
@@ -1492,7 +1495,7 @@ export function AiValidatorView() {
                   }}
                   className={`px-2.5 py-1.5 rounded-lg text-xs transition-all font-mono flex items-center gap-1.5 border ${isSelected
                       ? "bg-indigo-600 text-white font-medium border-indigo-500 shadow-sm shadow-indigo-600/20"
-                      : "bg-slate-800/60 text-slate-400 border-slate-700/60 hover:text-white hover:bg-slate-800"
+                      : "bg-accent/50 text-muted-foreground border-border hover:text-foreground hover:bg-accent"
                     }`}
                 >
                   {colType === "number" && <Hash className="w-3 h-3 text-emerald-400 shrink-0" />}
@@ -1507,31 +1510,31 @@ export function AiValidatorView() {
         {/* Active Data Preview (5 Rows) */}
         {activeSelectedCols.length > 0 && (
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span className="font-semibold uppercase tracking-wider text-slate-300">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="font-semibold uppercase tracking-wider text-foreground/90">
                 Active Dataset Preview (First 5 Rows)
               </span>
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] text-muted-foreground">
                 Preserved actual values with leading zeros
               </span>
             </div>
 
-            <div className="overflow-x-auto max-h-44 rounded-xl border border-slate-800 bg-slate-950/40">
+            <div className="overflow-x-auto max-h-44 rounded-xl border border-border bg-accent/20">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-950 text-slate-400 sticky top-0 border-b border-slate-800">
+                <thead className="bg-accent text-muted-foreground sticky top-0 border-b border-border">
                   <tr>
                     {activeSelectedCols.map((col) => (
-                      <th key={col} className="p-2.5 font-mono text-slate-300">
+                      <th key={col} className="p-2.5 font-mono text-foreground/90">
                         {col}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                <tbody className="divide-y divide-border text-foreground/90">
                   {activeSheet.rows.slice(0, 5).map((row, rIdx) => (
-                    <tr key={rIdx} className="hover:bg-slate-900/40 font-mono">
+                    <tr key={rIdx} className="hover:bg-accent/20 font-mono">
                       {activeSelectedCols.map((col) => (
-                        <td key={col} className="p-2.5 text-slate-200">
+                        <td key={col} className="p-2.5 text-foreground">
                           {row[col] !== null && row[col] !== undefined ? String(row[col]) : "null"}
                         </td>
                       ))}
@@ -1547,17 +1550,17 @@ export function AiValidatorView() {
       {/* =========================================================================
           SECTION 2: MERGED REFERENCE SOURCES (EXCELS + DOCS + WORKSPACE DATASETS)
          ========================================================================= */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="space-y-1">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
+            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
               <Layers className="w-5 h-5 text-indigo-400" />
               <span>Unified Reference Hub: Excels & Policy Documents</span>
               <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                 {refDatasets.length} Spreadsheet(s) &bull; {refDocs.length} Document(s)
               </span>
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               Upload multiple counterparty spreadsheets (.xlsx, .csv) and policy rulebooks (.pdf, .docx, .txt), or import existing datasets from your workspace.
             </p>
           </div>
@@ -1577,7 +1580,7 @@ export function AiValidatorView() {
               variant="outline"
               size="sm"
               onClick={() => setIsWorkspaceModalOpen(true)}
-              className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs gap-1.5"
+              className="border-border text-foreground hover:bg-accent text-xs gap-1.5"
             >
               <Database className="w-3.5 h-3.5 text-purple-400" />
               From Workspace Datasets
@@ -1601,16 +1604,16 @@ export function AiValidatorView() {
         {refDatasets.length === 0 && refDocs.length === 0 && (
           <div
             onClick={() => unifiedFileInputRef.current?.click()}
-            className="border-2 border-dashed border-slate-700 hover:border-indigo-500/60 rounded-2xl p-8 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-slate-900/60 space-y-3"
+            className="border-2 border-dashed border-border hover:border-primary/60 rounded-2xl p-8 text-center cursor-pointer transition-all bg-accent/20 hover:bg-accent/40 space-y-3"
           >
             <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
               <UploadCloud className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <div className="text-sm font-semibold text-white">
+              <div className="text-sm font-semibold text-foreground">
                 Drop multiple spreadsheets or policy documents here
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 Supports Excel (.xlsx, .xls, .csv) &amp; Rulebooks (.pdf, .docx, .txt, .md). All files processed locally.
               </p>
             </div>
@@ -1621,7 +1624,7 @@ export function AiValidatorView() {
         {(refDatasets.length > 0 || refDocs.length > 0) && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Configured Reference Sources ({refDatasets.length + refDocs.length})
               </span>
               <Button
@@ -1643,14 +1646,14 @@ export function AiValidatorView() {
                     key={ds.id}
                     onClick={() => setActiveRefTab(ds.id)}
                     className={`px-3 py-2 rounded-xl border text-xs text-left transition-all flex items-center gap-2 ${isActive
-                        ? "bg-indigo-600/20 border-indigo-500 text-white shadow-sm"
-                        : "bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                        ? "bg-indigo-500/15 border-indigo-500 text-indigo-600 dark:text-indigo-300 font-semibold shadow-sm"
+                        : "bg-accent/40 border-border text-muted-foreground hover:bg-accent hover:text-foreground"
                       }`}
                   >
                     <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span className="font-semibold truncate max-w-[180px]">{ds.fileName}</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
-                      {ds.sourceRowCount.toLocaleString()} r
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-accent text-muted-foreground">
+                      {(ds.sourceRowCount ?? 0).toLocaleString()} r
                     </span>
                     <button
                       type="button"
@@ -1659,7 +1662,7 @@ export function AiValidatorView() {
                         setRefDatasets((prev) => prev.filter((d) => d.id !== ds.id));
                         if (activeRefTab === ds.id) setActiveRefTab("");
                       }}
-                      className="text-slate-500 hover:text-rose-400 ml-1 p-0.5 rounded"
+                      className="text-muted-foreground hover:text-rose-400 ml-1 p-0.5 rounded"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1674,8 +1677,8 @@ export function AiValidatorView() {
                     key={doc.id}
                     onClick={() => setActiveRefTab(doc.id)}
                     className={`px-3 py-2 rounded-xl border text-xs text-left transition-all flex items-center gap-2 ${isActive
-                        ? "bg-purple-600/20 border-purple-500 text-white shadow-sm"
-                        : "bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                        ? "bg-purple-500/15 border-purple-500 text-purple-600 dark:text-purple-300 font-semibold shadow-sm"
+                        : "bg-accent/40 border-border text-muted-foreground hover:bg-accent hover:text-foreground"
                       }`}
                   >
                     <FileText className="w-4 h-4 text-purple-400 shrink-0" />
@@ -1686,8 +1689,8 @@ export function AiValidatorView() {
                         Rules Ready
                       </span>
                     ) : (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
-                        {doc.wordCount.toLocaleString()} w
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-accent text-muted-foreground">
+                        {(doc.wordCount ?? 0).toLocaleString()} w
                       </span>
                     )}
                     <button
@@ -1697,7 +1700,7 @@ export function AiValidatorView() {
                         setRefDocs((prev) => prev.filter((d) => d.id !== doc.id));
                         if (activeRefTab === doc.id) setActiveRefTab("");
                       }}
-                      className="text-slate-500 hover:text-rose-400 ml-1 p-0.5 rounded"
+                      className="text-muted-foreground hover:text-rose-400 ml-1 p-0.5 rounded"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1708,28 +1711,28 @@ export function AiValidatorView() {
 
             {/* ACTIVE SPREADSHEET CONFIGURATION DRAWER (RESERVED DESIGN) */}
             {currentRefDataset && (
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-5 space-y-5 animate-in fade-in duration-150">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-800">
+              <div className="bg-card border border-border rounded-xl p-5 space-y-5 animate-in fade-in duration-150">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border">
                   <div className="flex items-center gap-2.5">
                     <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                       <FileSpreadsheet className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white flex items-center gap-2">
+                      <div className="text-xs font-bold text-foreground flex items-center gap-2">
                         <span>{currentRefDataset.fileName}</span>
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-[10px] text-muted-foreground">
                           ({formatBytes(currentRefDataset.fileSizeBytes)})
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-400">
-                        {currentRefDataset.sourceRowCount.toLocaleString()} rows &bull; Sheet: {currentRefDataset.sheetName}
+                      <div className="text-[11px] text-muted-foreground">
+                        {(currentRefDataset.sourceRowCount ?? 0).toLocaleString()} rows &bull; Sheet: {currentRefDataset.sheetName}
                       </div>
                     </div>
                   </div>
 
                   {/* Sheet Switcher if multiple sheets */}
                   {currentRefDataset.availableSheets.length > 1 && (
-                    <div className="flex items-center gap-2 text-xs text-slate-300">
+                    <div className="flex items-center gap-2 text-xs text-foreground/90">
                       <span>Sheet:</span>
                       <select
                         value={currentRefDataset.sheetName}
@@ -1758,7 +1761,7 @@ export function AiValidatorView() {
                             })
                           );
                         }}
-                        className="bg-slate-800 border border-slate-700 rounded p-1 text-white text-xs"
+                        className="bg-card border border-border rounded p-1 text-foreground text-xs"
                       >
                         {currentRefDataset.availableSheets.map((s) => (
                           <option key={s} value={s}>
@@ -1775,17 +1778,17 @@ export function AiValidatorView() {
                   {/* Top Bar: Title, Counts, Search & Quick Actions */}
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                     <div className="space-y-1">
-                      <div className="text-xs font-bold text-white flex flex-wrap items-center gap-2">
+                      <div className="text-xs font-bold text-foreground flex flex-wrap items-center gap-2">
                         <Database className="w-4 h-4 text-emerald-400" />
                         <span>Reference Columns &bull; {currentRefDataset.sheetName}</span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
                           {currentRefDataset.selectedColumns.length} of {currentRefDataset.columnProfiles.length} selected
                         </span>
-                        <span className="text-[10px] font-mono text-slate-400">
+                        <span className="text-[10px] font-mono text-muted-foreground">
                           ({refColTypeCounts.numericSelected} # &bull; {refColTypeCounts.textSelected} T &bull; {refColTypeCounts.dateSelected} 📅)
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-[11px] text-muted-foreground">
                         Select which attributes from this reference spreadsheet to profile and validate against active portfolio fields.
                       </p>
                     </div>
@@ -1794,19 +1797,19 @@ export function AiValidatorView() {
                     <div className="flex flex-wrap items-center gap-1.5">
                       {/* Search Input with Clear Button */}
                       <div className="relative">
-                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
                         <input
                           type="text"
                           placeholder="Search ref columns..."
                           value={refColSearch}
                           onChange={(e) => setRefColSearch(e.target.value)}
-                          className="bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-7 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-44"
+                          className="bg-card border border-border rounded-lg pl-8 pr-7 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 w-44"
                         />
                         {refColSearch && (
                           <button
                             type="button"
                             onClick={() => setRefColSearch("")}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -1826,7 +1829,7 @@ export function AiValidatorView() {
                             )
                           );
                         }}
-                        className="border-slate-700 text-xs text-slate-300 hover:bg-slate-800 h-7 px-2.5"
+                        className="border-border text-xs text-foreground hover:bg-accent h-7 px-2.5"
                         title="Select all columns in this reference sheet"
                       >
                         Select All
@@ -1850,7 +1853,7 @@ export function AiValidatorView() {
                             )
                           );
                         }}
-                        className="border-slate-700 text-xs text-slate-300 hover:bg-slate-800 h-7 px-2.5 flex items-center gap-1"
+                        className="border-border text-xs text-foreground hover:bg-accent h-7 px-2.5 flex items-center gap-1"
                         title="Select all numeric columns"
                       >
                         <Hash className="w-3 h-3 text-emerald-400" />
@@ -1875,7 +1878,7 @@ export function AiValidatorView() {
                             )
                           );
                         }}
-                        className="border-slate-700 text-xs text-slate-300 hover:bg-slate-800 h-7 px-2.5 flex items-center gap-1"
+                        className="border-border text-xs text-foreground hover:bg-accent h-7 px-2.5 flex items-center gap-1"
                         title="Select all text / categorical columns"
                       >
                         <Type className="w-3 h-3 text-sky-400" />
@@ -1900,7 +1903,7 @@ export function AiValidatorView() {
                             )
                           );
                         }}
-                        className="border-slate-700 text-xs text-slate-300 hover:bg-slate-800 h-7 px-2.5 flex items-center gap-1"
+                        className="border-border text-xs text-foreground hover:bg-accent h-7 px-2.5 flex items-center gap-1"
                         title="Select all date columns"
                       >
                         <Calendar className="w-3 h-3 text-amber-400" />
@@ -1923,7 +1926,7 @@ export function AiValidatorView() {
                             })
                           );
                         }}
-                        className="border-slate-700 text-xs text-slate-300 hover:bg-slate-800 h-7 px-2.5"
+                        className="border-border text-xs text-foreground hover:bg-accent h-7 px-2.5"
                         title="Invert current column selection"
                       >
                         Invert
@@ -1940,7 +1943,7 @@ export function AiValidatorView() {
                             )
                           );
                         }}
-                        className="border-slate-700 text-xs text-slate-300 hover:bg-slate-800 h-7 px-2.5"
+                        className="border-border text-xs text-foreground hover:bg-accent h-7 px-2.5"
                         title="Clear all selected columns"
                       >
                         Clear
@@ -1949,21 +1952,21 @@ export function AiValidatorView() {
                   </div>
 
                   {/* Type Filter Sub-Tabs Bar */}
-                  <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-800/80 pb-2">
-                    <span className="text-[11px] text-slate-400 font-medium mr-1 flex items-center gap-1">
-                      <Filter className="w-3 h-3 text-slate-400" />
+                  <div className="flex flex-wrap items-center gap-1.5 border-b border-border pb-2">
+                    <span className="text-[11px] text-muted-foreground font-medium mr-1 flex items-center gap-1">
+                      <Filter className="w-3 h-3 text-muted-foreground" />
                       Filter View:
                     </span>
                     <button
                       type="button"
                       onClick={() => setRefTypeFilter("all")}
                       className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all flex items-center gap-1.5 ${refTypeFilter === "all"
-                          ? "bg-slate-700 text-white font-medium shadow-sm"
-                          : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                          ? "bg-primary text-primary-foreground font-medium shadow-sm"
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent"
                         }`}
                     >
                       <span>All Columns</span>
-                      <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-900/60 font-semibold">
+                      <span className="px-1.5 py-0.2 rounded text-[10px] bg-accent font-semibold">
                         {currentRefDataset.columnProfiles.length}
                       </span>
                     </button>
@@ -1972,12 +1975,12 @@ export function AiValidatorView() {
                       onClick={() => setRefTypeFilter("number")}
                       className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all flex items-center gap-1.5 ${refTypeFilter === "number"
                           ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium shadow-sm"
-                          : "text-slate-400 hover:text-emerald-300 hover:bg-slate-800/60"
+                          : "text-muted-foreground hover:text-emerald-300 hover:bg-accent/60"
                         }`}
                     >
                       <Hash className="w-3 h-3 text-emerald-400" />
                       <span>Numeric</span>
-                      <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-900/60 font-semibold">
+                      <span className="px-1.5 py-0.2 rounded text-[10px] bg-accent font-semibold">
                         {refColTypeCounts.numericTotal}
                       </span>
                     </button>
@@ -1986,12 +1989,12 @@ export function AiValidatorView() {
                       onClick={() => setRefTypeFilter("string")}
                       className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all flex items-center gap-1.5 ${refTypeFilter === "string"
                           ? "bg-sky-500/20 text-sky-300 border border-sky-500/30 font-medium shadow-sm"
-                          : "text-slate-400 hover:text-sky-300 hover:bg-slate-800/60"
+                          : "text-muted-foreground hover:text-sky-300 hover:bg-accent/60"
                         }`}
                     >
                       <Type className="w-3 h-3 text-sky-400" />
                       <span>Text / Categorical</span>
-                      <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-900/60 font-semibold">
+                      <span className="px-1.5 py-0.2 rounded text-[10px] bg-accent font-semibold">
                         {refColTypeCounts.textTotal}
                       </span>
                     </button>
@@ -2000,21 +2003,21 @@ export function AiValidatorView() {
                       onClick={() => setRefTypeFilter("date")}
                       className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all flex items-center gap-1.5 ${refTypeFilter === "date"
                           ? "bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium shadow-sm"
-                          : "text-slate-400 hover:text-amber-300 hover:bg-slate-800/60"
+                          : "text-muted-foreground hover:text-amber-300 hover:bg-accent/60"
                         }`}
                     >
                       <Calendar className="w-3 h-3 text-amber-400" />
                       <span>Dates</span>
-                      <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-900/60 font-semibold">
+                      <span className="px-1.5 py-0.2 rounded text-[10px] bg-accent font-semibold">
                         {refColTypeCounts.dateTotal}
                       </span>
                     </button>
                   </div>
 
                   {/* Monospace Column Pills Grid / Container */}
-                  <div className="flex flex-wrap gap-2 max-h-52 overflow-y-auto p-3.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <div className="flex flex-wrap gap-2 max-h-52 overflow-y-auto p-3.5 rounded-xl bg-accent/30 border border-border">
                     {filteredRefColumnProfiles.length === 0 ? (
-                      <div className="w-full py-4 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-1">
+                      <div className="w-full py-4 text-center text-xs text-muted-foreground flex flex-col items-center justify-center gap-1">
                         <span>No columns match the current filter or search criteria.</span>
                         {(refColSearch || refTypeFilter !== "all") && (
                           <button
@@ -2052,7 +2055,7 @@ export function AiValidatorView() {
                             }}
                             className={`px-2.5 py-1.5 rounded-lg text-xs transition-all font-mono flex items-center gap-1.5 border group ${isSelected
                                 ? "bg-indigo-600 text-white font-medium border-indigo-500 shadow-sm shadow-indigo-600/20"
-                                : "bg-slate-800/60 text-slate-400 border-slate-700/60 hover:text-white hover:bg-slate-800"
+                                : "bg-accent/50 text-muted-foreground border-border hover:text-foreground hover:bg-accent"
                               }`}
                           >
                             {isSelected ? (
@@ -2072,7 +2075,7 @@ export function AiValidatorView() {
                               <span
                                 className={`text-[10px] px-1 rounded ${isSelected
                                     ? "bg-indigo-700 text-indigo-200"
-                                    : "bg-slate-700 text-amber-300"
+                                    : "bg-accent text-amber-500 dark:text-amber-300"
                                   }`}
                               >
                                 {p.completenessPercent}%
@@ -2087,8 +2090,8 @@ export function AiValidatorView() {
 
                 {/* Row Scope Mode */}
                 <div className="flex flex-wrap items-center gap-4 text-xs pt-1">
-                  <span className="text-slate-400 font-semibold">Scope:</span>
-                  <label className="flex items-center gap-1.5 cursor-pointer text-slate-300">
+                  <span className="text-muted-foreground font-semibold">Scope:</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-foreground/90">
                     <input
                       type="radio"
                       name={`scope-${currentRefDataset.id}`}
@@ -2102,9 +2105,9 @@ export function AiValidatorView() {
                       }}
                       className="text-indigo-600"
                     />
-                    <span>All Rows ({currentRefDataset.sourceRowCount.toLocaleString()})</span>
+                    <span>All Rows ({(currentRefDataset.sourceRowCount ?? 0).toLocaleString()})</span>
                   </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer text-slate-300">
+                  <label className="flex items-center gap-1.5 cursor-pointer text-foreground/90">
                     <input
                       type="radio"
                       name={`scope-${currentRefDataset.id}`}
@@ -2127,12 +2130,12 @@ export function AiValidatorView() {
                 {/* 5-Row Data Preview */}
                 {currentRefDataset.exampleRows.length > 0 && currentRefDataset.selectedColumns.length > 0 && (
                   <div className="space-y-1.5">
-                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                       Reference Data Preview (Preserved Leading Zeros)
                     </span>
-                    <div className="overflow-x-auto max-h-36 rounded-lg border border-slate-800 bg-slate-900">
+                    <div className="overflow-x-auto max-h-36 rounded-lg border border-border bg-card">
                       <table className="w-full text-xs text-left">
-                        <thead className="bg-slate-950 text-slate-400 sticky top-0 font-mono">
+                        <thead className="bg-accent text-muted-foreground sticky top-0 font-mono">
                           <tr>
                             {currentRefDataset.selectedColumns.map((col) => (
                               <th key={col} className="p-2">
@@ -2141,11 +2144,11 @@ export function AiValidatorView() {
                             ))}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/80 font-mono text-slate-300">
+                        <tbody className="divide-y divide-border font-mono text-foreground/90">
                           {currentRefDataset.exampleRows.map((row, rIdx) => (
                             <tr key={rIdx}>
                               {currentRefDataset.selectedColumns.map((col) => (
-                                <td key={col} className="p-2 text-slate-200">
+                                <td key={col} className="p-2 text-foreground">
                                   {row[col] !== null && row[col] !== undefined ? String(row[col]) : "null"}
                                 </td>
                               ))}
@@ -2157,7 +2160,7 @@ export function AiValidatorView() {
                   </div>
                 )}
                 {currentRefDataset.exampleRows.length > 0 && currentRefDataset.selectedColumns.length === 0 && (
-                  <div className="p-3 text-center rounded-lg border border-slate-800 bg-slate-900/40 text-slate-400 text-xs">
+                  <div className="p-3 text-center rounded-lg border border-border bg-accent/20 text-muted-foreground text-xs">
                     Select one or more reference columns above to preview sample rows.
                   </div>
                 )}
@@ -2166,22 +2169,22 @@ export function AiValidatorView() {
 
             {/* ACTIVE DOCUMENT CONFIGURATION DRAWER */}
             {currentRefDoc && (
-              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-5 space-y-5 animate-in fade-in duration-150">
+              <div className="bg-card border border-border rounded-xl p-5 space-y-5 animate-in fade-in duration-150">
                 {/* Header: Document Metadata & Request Action */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border">
                   <div className="flex items-center gap-2.5">
                     <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white flex items-center gap-2">
+                      <div className="text-xs font-bold text-foreground flex items-center gap-2">
                         <span>{currentRefDoc.fileName}</span>
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-[10px] text-muted-foreground">
                           ({formatBytes(currentRefDoc.fileSizeBytes)})
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-400">
-                        {currentRefDoc.wordCount.toLocaleString()} words &bull; {currentRefDoc.sectionCount} sections
+                      <div className="text-[11px] text-muted-foreground">
+                        {(currentRefDoc.wordCount ?? 0).toLocaleString()} words &bull; {currentRefDoc.sectionCount ?? 0} sections
                       </div>
                     </div>
                   </div>
@@ -2218,7 +2221,7 @@ export function AiValidatorView() {
                       <Sparkles className="w-6 h-6 text-amber-300 animate-spin" />
                     </div>
                     <div className="space-y-1">
-                      <div className="text-sm font-bold text-white">Synthesizing Policy Rules with AI...</div>
+                      <div className="text-sm font-bold text-foreground">Synthesizing Policy Rules with AI...</div>
                       <p className="text-xs text-purple-300 max-w-md mx-auto">
                         Analyzing {currentRefDoc.sections.length} document sections, evaluating credit policies, and constructing your Validation Rules &amp; Scenarios Selector.
                       </p>
@@ -2233,8 +2236,8 @@ export function AiValidatorView() {
                       <CheckSquare className="w-6 h-6 text-purple-400" />
                     </div>
                     <div className="space-y-1">
-                      <div className="text-sm font-bold text-white">Validation Rules &amp; Scenarios Selector</div>
-                      <p className="text-xs text-slate-400 max-w-lg mx-auto">
+                      <div className="text-sm font-bold text-foreground">Validation Rules &amp; Scenarios Selector</div>
+                      <p className="text-xs text-muted-foreground max-w-lg mx-auto">
                         Click <strong>Request AI Document Summary</strong> above to parse "{currentRefDoc.fileName}" and generate the interactive Validation Rules &amp; Scenarios Selector.
                       </p>
                     </div>
@@ -2258,7 +2261,7 @@ export function AiValidatorView() {
                         <Sparkles className="w-4 h-4 text-purple-400" />
                         <span>AI Document Underwriting Summary &bull; {currentRefDoc.fileName}</span>
                       </div>
-                      <p className="text-xs text-slate-300 leading-relaxed">{currentRefDoc.summary}</p>
+                      <p className="text-xs text-foreground/90 leading-relaxed">{currentRefDoc.summary}</p>
                       {currentRefDoc.extractedRules && currentRefDoc.extractedRules.length > 0 && (
                         <div className="pt-2 border-t border-purple-500/20 space-y-1.5">
                           <span className="text-[11px] font-semibold text-purple-400 uppercase tracking-wider">
@@ -2268,7 +2271,7 @@ export function AiValidatorView() {
                             {currentRefDoc.extractedRules.map((r, i) => (
                               <span
                                 key={i}
-                                className="px-2.5 py-1 rounded-lg text-xs bg-slate-900 text-slate-200 border border-purple-500/30 font-mono"
+                                className="px-2.5 py-1 rounded-lg text-xs bg-card text-foreground border border-purple-500/30 font-mono"
                               >
                                 {r}
                               </span>
@@ -2282,14 +2285,14 @@ export function AiValidatorView() {
                     <div className="space-y-4 pt-1">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div className="space-y-1">
-                          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                             <CheckSquare className="w-4 h-4 text-indigo-400" />
                             <span>Validation Rules &amp; Scenarios Selector</span>
                             <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
                               {selectedScenarioIds.size} of {scenarioRules.length} rules active
                             </span>
                           </h3>
-                          <p className="text-[11px] text-slate-400">
+                          <p className="text-[11px] text-muted-foreground">
                             Select specific verification scenarios and rule IDs to enforce across the active portfolio and reference sources.
                           </p>
                         </div>
@@ -2299,7 +2302,7 @@ export function AiValidatorView() {
                             variant="outline"
                             size="sm"
                             onClick={() => setSelectedScenarioIds(new Set(scenarioRules.map((s) => s.id)))}
-                            className="border-slate-700 text-xs text-slate-300 hover:bg-slate-800 h-7"
+                            className="border-border text-xs text-foreground hover:bg-accent h-7"
                           >
                             Select All
                           </Button>
@@ -2307,7 +2310,7 @@ export function AiValidatorView() {
                             variant="outline"
                             size="sm"
                             onClick={() => setSelectedScenarioIds(new Set())}
-                            className="border-slate-700 text-xs text-slate-300 hover:bg-slate-800 h-7"
+                            className="border-border text-xs text-foreground hover:bg-accent h-7"
                           >
                             Clear
                           </Button>
@@ -2315,7 +2318,7 @@ export function AiValidatorView() {
                       </div>
 
                       {/* Filters Bar: Category Tabs & Search */}
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-slate-800/80">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-border">
                         <div className="flex flex-wrap items-center gap-1.5">
                           {[
                             { id: "all", label: "All Rules" },
@@ -2329,8 +2332,8 @@ export function AiValidatorView() {
                               type="button"
                               onClick={() => setScenarioCategoryFilter(tab.id)}
                               className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${scenarioCategoryFilter === tab.id
-                                  ? "bg-indigo-600 text-white"
-                                  : "bg-slate-800 text-slate-400 hover:text-white"
+                                  ? "bg-primary text-primary-foreground shadow-sm"
+                                  : "bg-accent text-muted-foreground hover:text-foreground hover:bg-accent/80"
                                 }`}
                             >
                               {tab.label}
@@ -2339,13 +2342,13 @@ export function AiValidatorView() {
                         </div>
 
                         <div className="relative">
-                          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                          <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
                           <input
                             type="text"
                             placeholder="Search rules or questions..."
                             value={scenarioSearchQuery}
                             onChange={(e) => setScenarioSearchQuery(e.target.value)}
-                            className="bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-52"
+                            className="bg-card border border-border rounded-lg pl-8 pr-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-52"
                           />
                         </div>
                       </div>
@@ -2359,15 +2362,15 @@ export function AiValidatorView() {
                               key={sc.id}
                               onClick={() => handleToggleScenario(sc.id)}
                               className={`p-3.5 rounded-xl border text-xs cursor-pointer transition-all flex flex-col justify-between space-y-2.5 ${isSelected
-                                  ? "bg-indigo-950/20 border-indigo-500/50 shadow-sm shadow-indigo-500/5"
-                                  : "bg-slate-900/60 border-slate-800 hover:bg-slate-900"
+                                  ? "bg-indigo-500/10 border-indigo-500/40 shadow-sm"
+                                  : "bg-card border-border hover:bg-accent/40"
                                 }`}
                             >
                               <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2">
                                     <span
-                                      className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${isSelected ? "bg-indigo-600 text-white font-bold" : "border border-slate-700"
+                                      className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${isSelected ? "bg-indigo-600 text-white font-bold" : "border border-border"
                                         }`}
                                     >
                                       {isSelected ? "✓" : ""}
@@ -2375,7 +2378,7 @@ export function AiValidatorView() {
                                     <span className="font-mono font-bold text-indigo-400 uppercase text-[11px]">
                                       ID: {sc.id}
                                     </span>
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-slate-800 text-slate-300">
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-accent text-muted-foreground border border-border">
                                       {sc.category}
                                     </span>
                                   </div>
@@ -2386,19 +2389,19 @@ export function AiValidatorView() {
                                 </div>
 
                                 <div>
-                                  <h4 className="text-xs font-bold text-white">{sc.title}</h4>
-                                  <p className="text-[11px] text-slate-300 mt-0.5 italic">"{sc.businessQuestion}"</p>
+                                  <h4 className="text-xs font-bold text-foreground">{sc.title}</h4>
+                                  <p className="text-[11px] text-foreground/90 mt-0.5 italic">"{sc.businessQuestion}"</p>
                                 </div>
 
-                                <p className="text-[11px] text-slate-400 leading-relaxed">{sc.description}</p>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">{sc.description}</p>
                               </div>
 
-                              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-                                <div className="flex items-center gap-1 font-mono text-slate-300">
+                              <div className="pt-2 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground">
+                                <div className="flex items-center gap-1 font-mono text-foreground/90">
                                   <span>Columns:</span>
                                   <span className="text-indigo-300 font-semibold">{sc.targetColumns.join(", ")}</span>
                                 </div>
-                                <span className="text-[10px] text-slate-500 uppercase">{sc.source}</span>
+                                <span className="text-[10px] text-muted-foreground uppercase">{sc.source}</span>
                               </div>
                             </div>
                           );
@@ -2409,8 +2412,8 @@ export function AiValidatorView() {
                 )}
 
                 {/* Section Checklist */}
-                <div className="space-y-2 pt-2 border-t border-slate-800/80">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Source Document Sections ({currentRefDoc.sections.length})
                   </span>
                   <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
@@ -2431,23 +2434,23 @@ export function AiValidatorView() {
                             );
                           }}
                           className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-colors flex items-center justify-between ${isIncluded
-                              ? "bg-purple-950/30 border-purple-500/40 text-slate-200"
-                              : "bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800"
+                              ? "bg-purple-950/30 border-purple-500/40 text-foreground"
+                              : "bg-card border-border text-muted-foreground hover:bg-accent hover:text-foreground"
                             }`}
                         >
                           <div className="flex items-center gap-2 truncate">
                             <span
-                              className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[9px] ${isIncluded ? "bg-purple-600 text-white font-bold" : "border border-slate-700"
+                              className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[9px] ${isIncluded ? "bg-purple-600 text-white font-bold" : "border border-border"
                                 }`}
                             >
                               {isIncluded ? "✓" : ""}
                             </span>
-                            <span className="font-semibold text-white truncate">
+                            <span className="font-semibold text-foreground truncate">
                               {sec.heading || `Section ${idx + 1}`}
                             </span>
                           </div>
-                          <span className="text-[10px] text-slate-500 shrink-0">
-                            {sec.characterCount.toLocaleString()} chars
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            {(sec.characterCount ?? 0).toLocaleString()} chars
                           </span>
                         </div>
                       );
@@ -2463,26 +2466,26 @@ export function AiValidatorView() {
       {/* =========================================================================
           SECTION 3: WRITE VALIDATION PROMPT & SYNTHESIZE UNIFIED REQUEST
          ========================================================================= */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-800">
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border">
           <div className="space-y-1">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
+            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-indigo-400" />
               <span>Write Validation Prompt</span>
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               Type your reconciliation objectives, variance tolerances, and policy compliance requirements in natural language. Click &quot;Synthesize Unified Request&quot; to generate your AI validation plan.
             </p>
           </div>
 
           <div className="flex items-center gap-2 text-xs">
-            <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-mono text-[11px] border border-slate-700">
+            <span className="px-2.5 py-1 rounded-lg bg-accent text-foreground/90 font-mono text-[11px] border border-border">
               {activeSelectedCols.length} Target Cols
             </span>
-            <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-mono text-[11px] border border-slate-700">
+            <span className="px-2.5 py-1 rounded-lg bg-accent text-foreground/90 font-mono text-[11px] border border-border">
               {refDatasets.length} Ref Excel(s)
             </span>
-            <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-mono text-[11px] border border-slate-700">
+            <span className="px-2.5 py-1 rounded-lg bg-accent text-foreground/90 font-mono text-[11px] border border-border">
               {refDocs.length} Ref Doc(s)
             </span>
           </div>
@@ -2495,12 +2498,12 @@ export function AiValidatorView() {
             value={userPromptText}
             onChange={(e) => setUserPromptText(e.target.value)}
             placeholder="e.g. Reconcile active portfolio against reference spreadsheet on Application Number, verify Sanction Amount equality with ₹1.00 tolerance, and audit credit policy loan caps under ₹2,500,000..."
-            className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-sans leading-relaxed"
+            className="w-full bg-card border border-border rounded-xl p-3.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none font-sans leading-relaxed"
           />
 
           {/* Quick Prompt Recommendation Chips */}
           {/* <div className="flex flex-wrap items-center gap-1.5 text-xs pt-1">
-            <span className="text-[11px] text-slate-500 font-semibold">Quick Prompts:</span>
+            <span className="text-[11px] text-muted-foreground font-semibold">Quick Prompts:</span>
             {[
               "Calculate total Lender Disbursed Amount by Agent",
               "Reconcile Sanction Amounts against Reference Sheet",
@@ -2512,7 +2515,7 @@ export function AiValidatorView() {
                 key={i}
                 type="button"
                 onClick={() => setUserPromptText(prompt)}
-                className="px-2.5 py-1 rounded-lg bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800 text-[11px] border border-slate-700/60 transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-accent/80 text-muted-foreground hover:text-foreground hover:bg-accent text-[11px] border border-border/60 transition-colors"
               >
                 {prompt}
               </button>
@@ -2521,8 +2524,8 @@ export function AiValidatorView() {
         </div>
 
         {/* Action Controls & Synthesize Button */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-slate-800">
-          <div className="text-xs text-slate-400 flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-border">
+          <div className="text-xs text-muted-foreground flex items-center gap-2">
             <Info className="w-4 h-4 text-indigo-400 shrink-0" />
             <span>
               Clicking Synthesize will generate your validation request and open the AI Planner &amp; Multi-Turn Clarification Chat.
@@ -2540,7 +2543,7 @@ export function AiValidatorView() {
                   setUnifiedPreparedPayload(null);
                   setValidationPlanResult(null);
                 }}
-                className="text-xs text-slate-400 hover:text-white"
+                className="text-xs text-muted-foreground hover:text-foreground"
               >
                 Clear / Re-write
               </Button>
@@ -2562,17 +2565,17 @@ export function AiValidatorView() {
           (Revealed after clicking 'Synthesize Unified Request')
          ========================================================================= */}
       {hasSynthesizedRequest && (
-        <div className="bg-slate-900 border border-indigo-500/30 rounded-2xl p-6 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="bg-card border border-indigo-500/30 rounded-2xl p-6 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center justify-between pb-3 border-b border-border">
             <div className="space-y-1">
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-indigo-400" />
                 <span>AI Validation Planner &amp; Multi-Turn Clarification Chat</span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                   Active Dialogue
                 </span>
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 Review your synthesized request and LLM responses below. Answer clarification options or send follow-up instructions to refine your rules.
               </p>
             </div>
@@ -2584,14 +2587,14 @@ export function AiValidatorView() {
                 setValidationPlanResult(null);
                 handlePrepareUnifiedPayload();
               }}
-              className="text-xs text-slate-400 hover:text-white"
+              className="text-xs text-muted-foreground hover:text-foreground"
             >
               Reset Chat
             </Button>
           </div>
 
           {/* Chat Messages Stream */}
-          <div className="space-y-4 max-h-96 overflow-y-auto p-4 rounded-xl bg-slate-950/70 border border-slate-800">
+          <div className="space-y-4 max-h-96 overflow-y-auto p-4 rounded-xl bg-accent/20 border border-border">
             {chatMessages.map((msg) => {
               const isAi = msg.sender === "ai";
               return (
@@ -2608,9 +2611,9 @@ export function AiValidatorView() {
                   <div
                     className={`max-w-2xl p-4 rounded-2xl text-xs space-y-3 leading-relaxed shadow-sm ${isAi
                         ? msg.status === "blocked"
-                          ? "bg-slate-900 border border-amber-500/40 text-slate-200"
-                          : "bg-slate-900 border border-slate-800 text-slate-200"
-                        : "bg-indigo-600 text-white font-medium"
+                          ? "bg-card border border-amber-500/40 text-foreground"
+                          : "bg-card border border-border text-foreground"
+                        : "bg-primary text-primary-foreground font-medium"
                       }`}
                   >
                     {isAi && msg.status === "blocked" && (
@@ -2623,9 +2626,9 @@ export function AiValidatorView() {
                     <p className="whitespace-pre-line">{msg.text}</p>
 
                     {isAi && msg.issues && msg.issues.length > 0 && (
-                      <div className="space-y-1 p-2.5 rounded-lg bg-slate-950/80 border border-rose-500/30 text-[11px]">
+                      <div className="space-y-1 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-[11px]">
                         {msg.issues.map((issue: any, idx: number) => (
-                          <div key={idx} className="text-slate-300">
+                          <div key={idx} className="text-foreground/90">
                             <span className="font-mono font-bold text-rose-400">[{issue.code}]</span>: {issue.message}
                           </div>
                         ))}
@@ -2633,9 +2636,9 @@ export function AiValidatorView() {
                     )}
 
                     {isAi && msg.questions && msg.questions.length > 0 && (
-                      <div className="space-y-3 pt-2 border-t border-slate-800">
+                      <div className="space-y-3 pt-2 border-t border-border">
                         {msg.questions.map((q) => (
-                          <div key={q.id} className="space-y-2 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                          <div key={q.id} className="space-y-2 bg-accent/40 p-3 rounded-xl border border-border">
                             <div className="text-[11px] font-bold text-indigo-300 flex items-start gap-1.5">
                               <HelpCircle className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
                               <span>{q.question}</span>
@@ -2659,7 +2662,7 @@ export function AiValidatorView() {
                                       onClick={() => handleAnswerQuestion(msg.id, q.id, opt)}
                                       className={`px-2.5 py-1 rounded-lg text-xs transition-all font-mono ${isChosen
                                           ? "bg-indigo-600 text-white font-bold border border-indigo-400"
-                                          : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700"
+                                          : "bg-accent text-foreground/90 hover:bg-accent/80 hover:text-foreground border border-border"
                                         }`}
                                     >
                                       {isChosen && "✓ "}
@@ -2684,7 +2687,7 @@ export function AiValidatorView() {
                                     }
                                   }
                                 }}
-                                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+                                className="flex-1 bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono"
                               />
                               <Button
                                 size="sm"
@@ -2706,7 +2709,7 @@ export function AiValidatorView() {
                       </div>
                     )}
 
-                    <div className={`text-[10px] ${isAi ? "text-slate-500" : "text-indigo-200"} text-right`}>
+                    <div className={`text-[10px] ${isAi ? "text-muted-foreground" : "text-indigo-200"} text-right`}>
                       {msg.timestamp}
                     </div>
                   </div>
@@ -2721,7 +2724,7 @@ export function AiValidatorView() {
             })}
 
             {isAiThinking && (
-              <div className="flex items-center gap-2 text-xs text-slate-400 italic">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground italic">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-spin" />
                 <span>AI Validator is analyzing your files and framing rules...</span>
               </div>
@@ -2740,7 +2743,7 @@ export function AiValidatorView() {
                 if (e.key === "Enter") handleSendChatMessage();
               }}
               placeholder="Ask a question, refine tolerance, or add additional rule instructions..."
-              className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="flex-1 bg-card border border-border rounded-xl px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <Button
               onClick={handleSendChatMessage}
@@ -2758,20 +2761,20 @@ export function AiValidatorView() {
           SECTION 5: SYNTHESIZED PAYLOAD & EXECUTION REPORT
          ========================================================================= */}
       {unifiedPreparedPayload && (
-        <div className="bg-slate-900 border border-emerald-500/30 rounded-2xl p-6 shadow-sm space-y-6 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-800">
+        <div className="bg-card border border-emerald-500/30 rounded-2xl p-6 shadow-sm space-y-6 animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border">
             <div className="flex items-center gap-2.5">
               <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                   <span>Unified AI Request Prepared</span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-emerald-400 border border-slate-700">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-accent text-emerald-400 border border-border">
                     Version 2.0 Ready
                   </span>
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   Full multi-dataset and document specification synthesized client-side. Zero full spreadsheet rows exfiltrated.
                 </p>
               </div>
@@ -2782,7 +2785,7 @@ export function AiValidatorView() {
                 variant="outline"
                 size="sm"
                 onClick={() => handleCopyJson(unifiedPreparedPayload)}
-                className="border-slate-700 text-xs text-slate-300 hover:bg-slate-800"
+                className="border-border text-xs text-foreground hover:bg-accent"
               >
                 <Copy className="w-3.5 h-3.5 mr-1.5" />
                 Copy JSON
@@ -2796,7 +2799,7 @@ export function AiValidatorView() {
                     `Unified_AI_Validation_Request_${activeDataset.name.replace(/\.[^/.]+$/, "")}.json`
                   )
                 }
-                className="border-slate-700 text-xs text-slate-300 hover:bg-slate-800"
+                className="border-border text-xs text-foreground hover:bg-accent"
               >
                 <Download className="w-3.5 h-3.5 mr-1.5" />
                 Download JSON
@@ -2819,27 +2822,27 @@ export function AiValidatorView() {
 
           {/* Metric Summary Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-700/60">
-              <span className="text-[11px] text-slate-400">Operation</span>
+            <div className="bg-accent/40 p-3 rounded-xl border border-border/60">
+              <span className="text-[11px] text-muted-foreground">Operation</span>
               <div className="text-xs font-mono font-bold text-indigo-400 mt-1">
                 {unifiedPreparedPayload.operationType}
               </div>
             </div>
-            <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-700/60">
-              <span className="text-[11px] text-slate-400">Active Scope</span>
-              <div className="text-xs font-bold text-white mt-1">
-                {unifiedPreparedPayload.activeDataset.sourceRowCount.toLocaleString()} rows &bull;{" "}
+            <div className="bg-accent/40 p-3 rounded-xl border border-border/60">
+              <span className="text-[11px] text-muted-foreground">Active Scope</span>
+              <div className="text-xs font-bold text-foreground mt-1">
+                {(unifiedPreparedPayload.activeDataset.sourceRowCount ?? 0).toLocaleString()} rows &bull;{" "}
                 {unifiedPreparedPayload.activeDataset.selectedColumns.length} cols
               </div>
             </div>
-            <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-700/60">
-              <span className="text-[11px] text-slate-400">Reference Sources</span>
-              <div className="text-xs font-bold text-white mt-1">
+            <div className="bg-accent/40 p-3 rounded-xl border border-border/60">
+              <span className="text-[11px] text-muted-foreground">Reference Sources</span>
+              <div className="text-xs font-bold text-foreground mt-1">
                 {unifiedPreparedPayload.referenceDatasets.length} Excels &bull; {unifiedPreparedPayload.referenceDocuments.length} Docs
               </div>
             </div>
-            <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-700/60">
-              <span className="text-[11px] text-slate-400">Active Scenario Rules</span>
+            <div className="bg-accent/40 p-3 rounded-xl border border-border/60">
+              <span className="text-[11px] text-muted-foreground">Active Scenario Rules</span>
               <div className="text-xs font-bold text-emerald-400 mt-1">
                 {unifiedPreparedPayload.selectedScenarioIds.length} Rules Enforced
               </div>
@@ -2850,7 +2853,7 @@ export function AiValidatorView() {
           {validationPlanResult && (
             <div className="space-y-4">
               {/* Plan Header Card */}
-              <div className="p-5 rounded-xl bg-slate-950 border border-emerald-500/40 space-y-4">
+              <div className="p-5 rounded-xl bg-card border border-emerald-500/40 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400">
@@ -2858,14 +2861,14 @@ export function AiValidatorView() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-white">
+                        <span className="text-sm font-bold text-foreground">
                           AI Validation Execution Plan (Ready for Client-Side Run)
                         </span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                           {validationPlanResult.comparisonMode || "group_calculation"}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {validationPlanResult.summary || "Group-level calculation plan confirmed and ready for local client execution."}
                       </p>
                     </div>
@@ -2890,41 +2893,41 @@ export function AiValidatorView() {
 
                 {/* Plan Scope & Column Mapping Spec */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
-                  <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
-                    <span className="text-slate-400 font-semibold flex items-center gap-1.5">
+                  <div className="p-3 rounded-lg bg-accent/30 border border-border space-y-1">
+                    <span className="text-muted-foreground font-semibold flex items-center gap-1.5">
                       <Layers className="w-3.5 h-3.5 text-indigo-400" />
                       <span>Confirmed Column Mapping:</span>
                     </span>
                     <div className="text-emerald-400 font-bold font-mono text-[11px]">
                       Active [Agent Name] ⇄ Ref [Sales Manager]
                     </div>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[10px] text-muted-foreground">
                       Confirmed across {validationPlanResult.referenceScopes?.length || 3} reference spreadsheet(s).
                     </p>
                   </div>
 
-                  <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
-                    <span className="text-slate-400 font-semibold flex items-center gap-1.5">
+                  <div className="p-3 rounded-lg bg-accent/30 border border-border space-y-1">
+                    <span className="text-muted-foreground font-semibold flex items-center gap-1.5">
                       <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
                       <span>Multi-Source Reference Scope:</span>
                     </span>
-                    <div className="text-white font-bold font-mono text-[11px]">
+                    <div className="text-foreground font-bold font-mono text-[11px]">
                       {validationPlanResult.scope?.referenceSelectedRowCount || 993} Reference Records
                     </div>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[10px] text-muted-foreground">
                       Sources: S1 (58) + S2 (513) + S3 (422) rows.
                     </p>
                   </div>
 
-                  <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
-                    <span className="text-slate-400 font-semibold flex items-center gap-1.5">
+                  <div className="p-3 rounded-lg bg-accent/30 border border-border space-y-1">
+                    <span className="text-muted-foreground font-semibold flex items-center gap-1.5">
                       <Calculator className="w-3.5 h-3.5 text-amber-400" />
                       <span>Aggregation Operation:</span>
                     </span>
                     <div className="text-amber-300 font-bold font-mono text-[11px]">
                       SUM([Lender Disbursed Amount])
                     </div>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[10px] text-muted-foreground">
                       Combine mode: UNION_ALL &bull; Grain: Per Active Group.
                     </p>
                   </div>
@@ -2933,19 +2936,19 @@ export function AiValidatorView() {
 
               {/* Generated Calculation Table (if localExecutionResult exists) */}
               {localExecutionResult && (
-                <div className="p-5 rounded-xl bg-slate-950 border border-indigo-500/40 space-y-5 animate-in fade-in duration-300 shadow-xl shadow-indigo-500/5">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-800">
+                <div className="p-5 rounded-xl bg-card border border-border space-y-5 animate-in fade-in duration-300 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <Table className="w-5 h-5 text-indigo-400" />
-                        <h4 className="text-sm font-bold text-white">
+                        <h4 className="text-sm font-bold text-foreground">
                           {localExecutionResult.ruleTitle}
                         </h4>
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                           Live Local Execution
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-muted-foreground">
                         Total aggregated disbursements calculated per agent across all reference spreadsheets.
                       </p>
                     </div>
@@ -2955,7 +2958,7 @@ export function AiValidatorView() {
                         size="sm"
                         variant="outline"
                         onClick={handleExportResultCsv}
-                        className="border-slate-700 text-xs text-slate-200 hover:bg-slate-800 gap-1.5"
+                        className="border-border text-xs text-foreground hover:bg-accent gap-1.5"
                       >
                         <Download className="w-3.5 h-3.5" />
                         Export CSV
@@ -2970,7 +2973,7 @@ export function AiValidatorView() {
                           navigator.clipboard.writeText(summaryText);
                           toast.success("Agent disbursement table copied to clipboard!");
                         }}
-                        className="border-slate-700 text-xs text-slate-200 hover:bg-slate-800 gap-1.5"
+                        className="border-border text-xs text-foreground hover:bg-accent gap-1.5"
                       >
                         <Copy className="w-3.5 h-3.5" />
                         Copy Table
@@ -2980,45 +2983,45 @@ export function AiValidatorView() {
 
                   {/* Summary Metric Cards */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
-                      <span className="text-[11px] text-slate-400 font-semibold">Grand Total Disbursed</span>
+                    <div className="p-3.5 rounded-xl bg-accent/30 border border-border space-y-1">
+                      <span className="text-[11px] text-muted-foreground font-semibold">Grand Total Disbursed</span>
                       <div className="text-base font-bold text-emerald-400 font-mono">
                         {formatINR(localExecutionResult.totalMeasureSum)}
                       </div>
-                      <span className="text-[10px] text-slate-500 block">Sum across all agents</span>
+                      <span className="text-[10px] text-muted-foreground block">Sum across all agents</span>
                     </div>
 
-                    <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
-                      <span className="text-[11px] text-slate-400 font-semibold">Unique Agents</span>
-                      <div className="text-base font-bold text-white font-mono">
+                    <div className="p-3.5 rounded-xl bg-accent/30 border border-border space-y-1">
+                      <span className="text-[11px] text-muted-foreground font-semibold">Unique Agents</span>
+                      <div className="text-base font-bold text-foreground font-mono">
                         {localExecutionResult.rows.length} Calculated
                       </div>
-                      <span className="text-[10px] text-slate-500 block">529 Active Group Scope</span>
+                      <span className="text-[10px] text-muted-foreground block">529 Active Group Scope</span>
                     </div>
 
-                    <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
-                      <span className="text-[11px] text-slate-400 font-semibold">Transactions Evaluated</span>
+                    <div className="p-3.5 rounded-xl bg-accent/30 border border-border space-y-1">
+                      <span className="text-[11px] text-muted-foreground font-semibold">Transactions Evaluated</span>
                       <div className="text-base font-bold text-indigo-400 font-mono">
                         {localExecutionResult.totalRecordsProcessed} Records
                       </div>
-                      <span className="text-[10px] text-slate-500 block">Union across 3 sheets</span>
+                      <span className="text-[10px] text-muted-foreground block">Union across 3 sheets</span>
                     </div>
 
-                    <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
-                      <span className="text-[11px] text-slate-400 font-semibold">Avg. Disbursed / Agent</span>
+                    <div className="p-3.5 rounded-xl bg-accent/30 border border-border space-y-1">
+                      <span className="text-[11px] text-muted-foreground font-semibold">Avg. Disbursed / Agent</span>
                       <div className="text-base font-bold text-amber-300 font-mono">
                         {formatINR(
                           Math.round(localExecutionResult.totalMeasureSum / (localExecutionResult.rows.length || 1))
                         )}
                       </div>
-                      <span className="text-[10px] text-slate-500 block">Per calculated sales agent</span>
+                      <span className="text-[10px] text-muted-foreground block">Per calculated sales agent</span>
                     </div>
                   </div>
 
                   {/* Table Search & Pagination Header */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
                     <div className="relative flex-1 max-w-xs">
-                      <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         value={tableSearchQuery}
@@ -3027,11 +3030,11 @@ export function AiValidatorView() {
                           setTablePage(1);
                         }}
                         placeholder="Search agent name..."
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="w-full bg-card border border-border rounded-lg pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
 
-                    <div className="text-xs text-slate-400 flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
                       <span>
                         Showing {Math.min(
                           (tablePage - 1) * pageSize + 1,
@@ -3058,21 +3061,21 @@ export function AiValidatorView() {
 
                     return (
                       <div className="space-y-3">
-                        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60">
+                        <div className="overflow-x-auto rounded-xl border border-border bg-accent/20">
                           <table className="w-full text-left text-xs border-collapse">
                             <thead>
-                              <tr className="border-b border-slate-800 bg-slate-900/90 text-slate-400 font-semibold text-[11px]">
+                              <tr className="border-b border-border bg-accent text-muted-foreground font-semibold text-[11px]">
                                 <th className="p-3 w-12 text-center">#</th>
                                 <th className="p-3">Agent Name (Active Sheet)</th>
                                 <th className="p-3">Mapped Reference Role</th>
                                 <th className="p-3 text-center">Ref Transactions</th>
                                 <th className="p-3">Source Breakdown</th>
-                                <th className="p-3 text-right font-bold text-white">Total Lender Disbursed Amount</th>
+                                <th className="p-3 text-right font-bold text-foreground">Total Lender Disbursed Amount</th>
                                 <th className="p-3 text-center w-28">Portfolio Share</th>
                                 <th className="p-3 text-center">Status</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                            <tbody className="divide-y divide-border text-foreground/90">
                               {paginated.length > 0 ? (
                                 paginated.map((row, idx) => {
                                   const rank = (tablePage - 1) * pageSize + idx + 1;
@@ -3083,19 +3086,19 @@ export function AiValidatorView() {
                                   return (
                                     <tr
                                       key={row.agentName}
-                                      className="hover:bg-slate-850/50 transition-colors group"
+                                      className="hover:bg-accent/50 transition-colors group"
                                     >
-                                      <td className="p-3 text-center text-slate-500 font-mono text-[11px]">
+                                      <td className="p-3 text-center text-muted-foreground font-mono text-[11px]">
                                         {rank}
                                       </td>
-                                      <td className="p-3 font-semibold text-white flex items-center gap-2">
+                                      <td className="p-3 font-semibold text-foreground flex items-center gap-2">
                                         <div className="w-6 h-6 rounded-full bg-indigo-600/20 text-indigo-300 flex items-center justify-center text-[10px] font-bold">
                                           {row.agentName.charAt(0)}
                                         </div>
                                         <span>{row.agentName}</span>
                                       </td>
                                       <td className="p-3">
-                                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300 border border-slate-700">
+                                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-accent text-foreground/90 border border-border">
                                           {row.referenceRole}
                                         </span>
                                       </td>
@@ -3103,14 +3106,14 @@ export function AiValidatorView() {
                                         <span className="font-mono text-indigo-300 font-bold">
                                           {row.recordCount}
                                         </span>
-                                        <span className="text-[10px] text-slate-500 ml-1">loans</span>
+                                        <span className="text-[10px] text-muted-foreground ml-1">loans</span>
                                       </td>
                                       <td className="p-3">
                                         <div className="flex flex-wrap items-center gap-1 text-[10px] font-mono">
                                           {Object.entries(row.sourceBreakdown).map(([src, amt]) => (
                                             <span
                                               key={src}
-                                              className="px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400 border border-slate-700/60"
+                                              className="px-1.5 py-0.5 rounded bg-accent/80 text-muted-foreground border border-border/60"
                                             >
                                               {src.split(" ")[0]}: {formatINR(amt)}
                                             </span>
@@ -3122,10 +3125,10 @@ export function AiValidatorView() {
                                       </td>
                                       <td className="p-3 text-center">
                                         <div className="space-y-1">
-                                          <span className="text-[10px] font-mono text-slate-400">
+                                          <span className="text-[10px] font-mono text-muted-foreground">
                                             {sharePercent}%
                                           </span>
-                                          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                          <div className="w-full bg-accent rounded-full h-1.5 overflow-hidden">
                                             <div
                                               className="bg-emerald-500 h-1.5 rounded-full"
                                               style={{ width: `${Math.min(100, Math.max(5, parseFloat(sharePercent) * 8))}%` }}
@@ -3144,7 +3147,7 @@ export function AiValidatorView() {
                                 })
                               ) : (
                                 <tr>
-                                  <td colSpan={8} className="p-6 text-center text-slate-500 italic">
+                                  <td colSpan={8} className="p-6 text-center text-muted-foreground italic">
                                     No agents match your filter criteria "{tableSearchQuery}".
                                   </td>
                                 </tr>
@@ -3155,10 +3158,10 @@ export function AiValidatorView() {
 
                         {/* Pagination Bar */}
                         {totalPages > 1 && (
-                          <div className="flex items-center justify-between pt-2 text-xs text-slate-400">
+                          <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground">
                             <div>
-                              Page <span className="font-bold text-white">{tablePage}</span> of{" "}
-                              <span className="font-bold text-white">{totalPages}</span>
+                              Page <span className="font-bold text-foreground">{tablePage}</span> of{" "}
+                              <span className="font-bold text-foreground">{totalPages}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <Button
@@ -3166,7 +3169,7 @@ export function AiValidatorView() {
                                 variant="outline"
                                 onClick={() => setTablePage((p) => Math.max(1, p - 1))}
                                 disabled={tablePage === 1}
-                                className="border-slate-800 text-xs text-slate-300"
+                                className="border-border text-xs text-foreground/90"
                               >
                                 Previous
                               </Button>
@@ -3175,7 +3178,7 @@ export function AiValidatorView() {
                                 variant="outline"
                                 onClick={() => setTablePage((p) => Math.min(totalPages, p + 1))}
                                 disabled={tablePage === totalPages}
-                                className="border-slate-800 text-xs text-slate-300"
+                                className="border-border text-xs text-foreground/90"
                               >
                                 Next
                               </Button>
@@ -3195,7 +3198,7 @@ export function AiValidatorView() {
             <button
               type="button"
               onClick={() => setShowJsonPreview((prev) => !prev)}
-              className="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5"
+              className="text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1.5"
             >
               <Code2 className="w-4 h-4 text-indigo-400" />
               <span>{showJsonPreview ? "Hide JSON Payload Preview" : "View Unified JSON Payload Preview"}</span>
@@ -3203,7 +3206,7 @@ export function AiValidatorView() {
             </button>
 
             {showJsonPreview && (
-              <pre className="mt-3 p-4 bg-slate-950 border border-slate-800 rounded-xl text-[11px] font-mono text-slate-300 max-h-96 overflow-y-auto leading-relaxed">
+              <pre className="mt-3 p-4 bg-card border border-border rounded-xl text-[11px] font-mono text-foreground/90 max-h-96 overflow-y-auto leading-relaxed">
                 {JSON.stringify(unifiedPreparedPayload, null, 2)}
               </pre>
             )}
@@ -3220,7 +3223,7 @@ export function AiValidatorView() {
         title="Select from Workspace Datasets"
       >
         <div className="space-y-4">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Choose any existing spreadsheet from your active session to link as a reference Excel for comparison:
           </p>
 
@@ -3229,21 +3232,21 @@ export function AiValidatorView() {
               <div
                 key={d.id}
                 onClick={() => handleAddWorkspaceDataset(d)}
-                className="p-3 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-900 hover:border-indigo-500/50 cursor-pointer transition-all flex items-center justify-between"
+                className="p-3 rounded-xl border border-border bg-card/60 hover:bg-accent hover:border-indigo-500/50 cursor-pointer transition-all flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                     <Database className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-white">{d.name}</div>
-                    <div className="text-[11px] text-slate-400">
-                      {d.sheets.length} Sheet(s) &bull; {d.sheets[0]?.rowCount.toLocaleString()} rows
+                    <div className="text-xs font-bold text-foreground">{d.name}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {d.sheets?.length || 0} Sheet(s) &bull; {(d.sheets?.[0]?.rowCount ?? d.sheets?.[0]?.rows?.length ?? 0).toLocaleString()} rows
                     </div>
                   </div>
                 </div>
 
-                <Button size="sm" variant="outline" className="border-slate-700 text-xs">
+                <Button size="sm" variant="outline" className="border-border text-xs">
                   Link Dataset
                 </Button>
               </div>
@@ -3255,7 +3258,7 @@ export function AiValidatorView() {
               variant="outline"
               size="sm"
               onClick={() => setIsWorkspaceModalOpen(false)}
-              className="text-xs border-slate-700 text-slate-400"
+              className="text-xs border-border text-muted-foreground"
             >
               Cancel
             </Button>
