@@ -204,7 +204,7 @@ export function Sidebar() {
         <div className="h-14 sm:h-16 flex items-center justify-between px-5 border-b border-border">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20">
-              <Brain className="h-5 w-5 text-primary-foreground" />
+            <span style={{color:"white"}} className="font-bold text-base">IQ</span>
             </div>
             <div>
               <h1 className="font-display font-bold text-base leading-none text-foreground">Report IQ</h1>
