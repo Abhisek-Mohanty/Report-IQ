@@ -47,7 +47,7 @@ export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   selectedDatasetId: null,
   selectedSheetName: null,
   activeTab: "upload",
-  theme: "dark", // default to dark theme for premium styling
+  theme: "light", // default to dark theme for premium styling
   charts: [],
   queryGroup: initialQueryGroup(),
   isMobileSidebarOpen: false,

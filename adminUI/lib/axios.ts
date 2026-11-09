@@ -29,6 +29,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Token expired or invalid
       localStorage.removeItem("access_token");
+      localStorage.removeItem("profile_info");
+
 
       window.location.href = "/";
     }
