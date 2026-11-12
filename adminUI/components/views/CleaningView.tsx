@@ -1,30 +1,33 @@
 import React, { useState, useMemo } from "react";
 import { useAnalyticsStore } from "@/store/useAnalyticsStore";
-import { 
-  analyzeDataset, 
-  replaceNullValues, 
-  cleanTextColumn, 
-  cleanFindReplace, 
-  cleanRemoveDuplicates, 
-  cleanRemoveEmptyRows, 
-  cleanRemoveEmptyColumns, 
-  cleanRenameColumn, 
-  cleanChangeType 
+import {
+  analyzeDataset,
+  replaceNullValues,
+  cleanTextColumn,
+  cleanFindReplace,
+  cleanRemoveDuplicates,
+  cleanRemoveEmptyRows,
+  cleanRemoveEmptyColumns,
+  cleanRenameColumn,
+  cleanChangeType
 } from "@/utils/dataOperations";
 import { toast } from "@/components/ui/toast";
-import { 
-  Sparkles, 
-  Table, 
-  Database, 
-  RefreshCw, 
-  Trash2, 
-  CaseSensitive, 
-  Replace, 
-  Braces, 
-  CheckCircle, 
+import {
+  Sparkles,
+  Table,
+  Database,
+  RefreshCw,
+  Trash2,
+  CaseSensitive,
+  Replace,
+  Braces,
+  CheckCircle,
   ShieldAlert,
-  Edit2
+  Edit2,
+  Eye,
+  Copy
 } from "lucide-react";
+import { DuplicateRecordsModal } from "@/components/modals/DuplicateRecordsModal";
 import { Button } from "@/components/ui/button";
 
 export function CleaningView() {
@@ -52,7 +55,7 @@ export function CleaningView() {
 
   // Form states for cleaning actions
   const [selectedCol, setSelectedCol] = useState("");
-  
+
   // Fill nulls config
   const [nullStrategy, setNullStrategy] = useState<"mean" | "median" | "mode" | "custom">("mean");
   const [customNullValue, setCustomNullValue] = useState("");
@@ -69,6 +72,9 @@ export function CleaningView() {
 
   // Type Cast config
   const [targetType, setTargetType] = useState<"string" | "number" | "date" | "boolean">("string");
+
+  // Duplicate Records Inspector Modal
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
 
   // Reset states when columns change
   React.useEffect(() => {
@@ -117,7 +123,7 @@ export function CleaningView() {
   const handleRenameColumn = () => {
     if (!activeSheet || !selectedCol || !newColName.trim()) return;
     if (newColName.trim() === selectedCol) return;
-    
+
     if (activeSheet.headers.includes(newColName.trim())) {
       toast.error(`Column "${newColName.trim()}" already exists!`);
       return;
@@ -136,9 +142,9 @@ export function CleaningView() {
     toast.success(`Cast column "${selectedCol}" type to ${targetType.toUpperCase()}`);
   };
 
-  const handleRemoveDuplicates = () => {
+  const handleRemoveDuplicates = (matchColumns?: string[]) => {
     if (!activeSheet) return;
-    const cleaned = cleanRemoveDuplicates(activeSheet);
+    const cleaned = cleanRemoveDuplicates(activeSheet, matchColumns);
     const deletedCount = activeSheet.rowCount - cleaned.rowCount;
     updateActiveSheetData(cleaned);
     toast.success(`Removed ${deletedCount} duplicate rows`);
@@ -155,7 +161,7 @@ export function CleaningView() {
   const handleRemoveEmptyColumns = () => {
     if (!activeSheet) return;
     const cleaned = cleanRemoveEmptyColumns(activeSheet);
-    
+
     const deletedCount = activeSheet.columnCount - cleaned.columnCount;
     updateActiveSheetData(cleaned);
     toast.success(`Removed ${deletedCount} empty columns`);
@@ -176,14 +182,14 @@ export function CleaningView() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-y-auto gap-6">
-      
+
       {/* Header section */}
       <div className="flex flex-wrap items-center justify-between gap-4 shrink-0">
         <h2 className="font-display font-bold text-2xl text-foreground flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-primary" />
           <span>Data Quality & Cleaning</span>
         </h2>
-        
+
         {/* active status indicators */}
         <div className="flex gap-2 text-xs font-semibold">
           <div className="px-2.5 py-1 bg-accent border border-border rounded-lg text-muted-foreground flex items-center gap-1.5">
@@ -199,16 +205,16 @@ export function CleaningView() {
 
       {/* Main Layout Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-        
+
         {/* LEFT COLUMN: Data Quality Profiler (Spans 2 cols) */}
         <div className="xl:col-span-2 space-y-6">
-          
+
           {/* Quality KPI Summary Cards */}
           <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-4">
             <h3 className="font-display font-bold text-sm text-foreground border-b border-border pb-2">
               Data Profiler Summary
             </h3>
-            
+
             {/* Completeness Score Card */}
             <div className="flex items-center gap-4 bg-accent/20 p-4 rounded-xl border border-border">
               <div className="relative h-14 w-14 shrink-0 flex items-center justify-center font-display font-extrabold text-xs text-primary bg-card rounded-full border border-border shadow-inner">
@@ -224,11 +230,23 @@ export function CleaningView() {
 
             {/* Quick Metrics grid */}
             <div className="grid grid-cols-2 gap-3.5">
-              <div className="bg-accent/15 border border-border/80 rounded-xl p-3.5">
-                <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block mb-1">Duplicate Rows</span>
-                <span className={`text-base font-bold font-display ${stats.duplicateRows > 0 ? "text-warning" : "text-success"}`}>
-                  {stats.duplicateRows.toLocaleString()}
-                </span>
+              <div
+                onClick={() => setIsDuplicateModalOpen(true)}
+                className="bg-accent/15 border border-border/80 hover:border-warning/60 hover:bg-accent/30 rounded-xl p-3.5 cursor-pointer transition-all group relative select-none shadow-xs"
+                title="Click to inspect duplicate records"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block">Duplicate Rows</span>
+                  <Eye className="w-3.5 h-3.5 text-muted-foreground group-hover:text-warning transition-colors" />
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className={`text-base font-bold font-display ${stats.duplicateRows > 0 ? "text-warning" : "text-success"}`}>
+                    {stats.duplicateRows.toLocaleString()}
+                  </span>
+                  {/* <span className="text-[10px] text-muted-foreground/75 group-hover:text-foreground font-medium underline">
+                    {stats.duplicateRows > 0 ? "View rows →" : "Inspect →"}
+                  </span> */}
+                </div>
               </div>
               <div className="bg-accent/15 border border-border/80 rounded-xl p-3.5">
                 <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block mb-1">Empty Rows</span>
@@ -244,7 +262,7 @@ export function CleaningView() {
             <h3 className="font-display font-bold text-sm text-foreground border-b border-border pb-2 shrink-0 mb-3">
               Null Value Analysis (Columns)
             </h3>
-            
+
             <div className="flex-1 overflow-y-auto pr-1">
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="bg-accent/50 text-[10px] text-muted-foreground font-bold uppercase sticky top-0 border-b border-border select-none">
@@ -293,13 +311,13 @@ export function CleaningView() {
 
         {/* RIGHT COLUMN: Cleaning Actions (Spans 3 cols) */}
         <div className="xl:col-span-3 space-y-6">
-          
+
           {/* Main settings bar to pick active column */}
           <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-4">
             <h3 className="font-display font-bold text-sm text-foreground border-b border-border pb-2">
               Select Column & Profile
             </h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-semibold text-xs">
               <div>
                 <label className="block text-muted-foreground mb-1">TARGET COLUMN</label>
@@ -327,7 +345,7 @@ export function CleaningView() {
 
           {/* Action boxes */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
+
             {/* Box 1: Null Value Handling */}
             <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-3.5 flex flex-col justify-between">
               <div>
@@ -335,7 +353,7 @@ export function CleaningView() {
                   <RefreshCw className="h-4 w-4" />
                   <span>Null Value Solver</span>
                 </h4>
-                
+
                 <div className="space-y-3 font-semibold text-xs">
                   <div>
                     <label className="block text-muted-foreground mb-1">REPLACEMENT STRATEGY</label>
@@ -494,12 +512,23 @@ export function CleaningView() {
               <span>Full-Table Cleansing</span>
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-foreground/90 font-semibold gap-1.5 text-xs h-9 justify-center hover:border-warning/60 hover:bg-warning/10"
+                onClick={() => setIsDuplicateModalOpen(true)}
+                title="View and inspect all duplicate records in this sheet"
+              >
+                <Eye className="h-3.5 w-3.5 text-warning shrink-0" />
+                <span>View Duplicates ({stats.duplicateRows})</span>
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
                 className="text-foreground/90 font-semibold gap-1.5 text-xs h-9 justify-center"
-                onClick={handleRemoveDuplicates}
+                onClick={() => handleRemoveDuplicates()}
+                disabled={stats.duplicateRows === 0}
               >
                 <Trash2 className="h-3.5 w-3.5 text-danger shrink-0" />
                 <span>Remove Duplicates</span>
@@ -526,6 +555,15 @@ export function CleaningView() {
           </div>
         </div>
       </div>
+
+      {/* Duplicate Records Inspector Dialog */}
+      <DuplicateRecordsModal
+        isOpen={isDuplicateModalOpen}
+        onClose={() => setIsDuplicateModalOpen(false)}
+        sheet={activeSheet}
+        datasetName={activeDataset.name}
+        onRemoveDuplicates={handleRemoveDuplicates}
+      />
     </div>
   );
 }

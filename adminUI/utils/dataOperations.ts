@@ -540,12 +540,97 @@ export function cleanFindReplace(
   };
 }
 
-export function cleanRemoveDuplicates(sheet: SheetData): SheetData {
+export interface DuplicateRowInfo {
+  rowIndex: number; // 1-based index
+  zeroBasedIndex: number;
+  data: Record<string, any>;
+  isOriginal: boolean;
+  groupId: number;
+  duplicateOrder: number;
+}
+
+export interface DuplicateGroupInfo {
+  groupId: number;
+  matchKey: string;
+  count: number;
+  originalRowIndex: number;
+  rows: DuplicateRowInfo[];
+}
+
+export interface DuplicateRecordsResult {
+  groups: DuplicateGroupInfo[];
+  allDuplicateRows: DuplicateRowInfo[];
+  redundantRows: DuplicateRowInfo[];
+  totalDuplicates: number;
+}
+
+export function findDuplicateRecords(
+  sheet: SheetData,
+  matchColumns?: string[]
+): DuplicateRecordsResult {
+  const map = new Map<string, { zeroBasedIndex: number; data: Record<string, any> }[]>();
+
+  sheet.rows.forEach((row, idx) => {
+    const key = matchColumns && matchColumns.length > 0
+      ? matchColumns.map((col) => String(row[col] ?? "")).join(" |:::| ")
+      : JSON.stringify(row);
+
+    const existing = map.get(key) || [];
+    existing.push({ zeroBasedIndex: idx, data: row });
+    map.set(key, existing);
+  });
+
+  const groups: DuplicateGroupInfo[] = [];
+  const allDuplicateRows: DuplicateRowInfo[] = [];
+  const redundantRows: DuplicateRowInfo[] = [];
+  let groupIdCounter = 1;
+
+  for (const [key, entries] of map.entries()) {
+    if (entries.length > 1) {
+      const groupRows: DuplicateRowInfo[] = entries.map((entry, order) => ({
+        rowIndex: entry.zeroBasedIndex + 1,
+        zeroBasedIndex: entry.zeroBasedIndex,
+        data: entry.data,
+        isOriginal: order === 0,
+        groupId: groupIdCounter,
+        duplicateOrder: order,
+      }));
+
+      groups.push({
+        groupId: groupIdCounter,
+        matchKey: key,
+        count: entries.length,
+        originalRowIndex: entries[0].zeroBasedIndex + 1,
+        rows: groupRows,
+      });
+
+      groupRows.forEach((r) => {
+        allDuplicateRows.push(r);
+        if (!r.isOriginal) {
+          redundantRows.push(r);
+        }
+      });
+
+      groupIdCounter++;
+    }
+  }
+
+  return {
+    groups,
+    allDuplicateRows,
+    redundantRows,
+    totalDuplicates: redundantRows.length,
+  };
+}
+
+export function cleanRemoveDuplicates(sheet: SheetData, matchColumns?: string[]): SheetData {
   const seen = new Set<string>();
   const updatedRows: Record<string, any>[] = [];
 
   sheet.rows.forEach((row) => {
-    const str = JSON.stringify(row);
+    const str = matchColumns && matchColumns.length > 0
+      ? matchColumns.map((col) => String(row[col] ?? "")).join(" |:::| ")
+      : JSON.stringify(row);
     if (!seen.has(str)) {
       seen.add(str);
       updatedRows.push(row);
