@@ -17,6 +17,7 @@ import { ManualChecksView } from "@/components/views/ManualChecksView";
 import { VisualizationsView } from "@/components/views/VisualizationsView";
 import { QueryBuilderView } from "@/components/views/QueryBuilderView";
 import { ExportView } from "@/components/views/ExportView";
+import { JsonConverterView } from "@/components/views/JsonConverterView";
 import { ComingSoonView } from "@/components/views/ComingSoonView";
 import { AiInsightsView } from "@/components/views/AiInsightsView";
 import { AiValidatorView } from "@/components/views/AiValidatorView";
@@ -70,6 +71,8 @@ export default function WorkspacePage() {
         return <VisualizationsView />;
       case "export":
         return <ExportView />;
+      case "json-converter":
+        return <JsonConverterView />;
       
       // AI Features (Desktop Mode Only)
       case "ai-insights":

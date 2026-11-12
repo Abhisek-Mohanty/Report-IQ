@@ -20,6 +20,7 @@ import {
   Activity, 
   MonitorCheck, 
   CheckSquare,
+  FileJson,
   X,
   Monitor
 } from "lucide-react";
@@ -49,6 +50,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: "query", name: "Query Builder", icon: Filter, category: "prep", requiresAuth: false },
   { id: "visualizations", name: "Visualizations", icon: BarChart3, category: "prep", requiresAuth: false },
   { id: "export", name: "From Excel", icon: Download, category: "convert", requiresAuth: false },
+  { id: "json-converter", name: "From JSON", icon: FileJson, category: "convert", requiresAuth: false },
   
   // AI Insights placeholders (Desktop Only)
   { id: "ai-insights", name: "AI Insights", icon: BrainCog, category: "ai", requiresAuth: true, desktopOnly: true },
@@ -225,6 +227,7 @@ export function Sidebar() {
         <nav className="flex-1 overflow-y-auto pt-4">
           {renderNavGroup("core", "Workspace Core", true)}
           {renderNavGroup("prep", "Data Prep & Visuals", true)}
+          {renderNavGroup("convert", "Data Converter", true)}
           {renderNavGroup("ai", "AI Copilots", true)}
         </nav>
 
